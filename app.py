@@ -115,70 +115,173 @@ class YouTubeSummarizer:
         return sanitized
 
     def download_youtube_video(self, url):
-        """Download YouTube video as audio"""
-        try:
-            # Configure yt-dlp options with optimized settings for speed and anti-bot measures
-            ydl_opts = {
-                'format': 'bestaudio/best',
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '192',
-                }],
-                'outtmpl': str(self.videos_dir / 'video_%(id)s.%(ext)s'),  # Use video ID instead of title
-                'quiet': True,
-                'no_warnings': True,
+        """Download YouTube video as audio with multiple fallback strategies"""
+        strategies = [
+            self._get_aggressive_strategy(),
+            self._get_conservative_strategy(),
+            self._get_minimal_strategy()
+        ]
 
-                # Anti-bot and browser-like headers to prevent 403 errors
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-                'referer': 'https://www.youtube.com/',
-                'nocheckcertificate': True,
-                'rm_cachedir': True,  # Clear cache before downloading
+        for i, ydl_opts in enumerate(strategies):
+            try:
+                if i > 0:
+                    st.info(f"🔄 Trying alternative download strategy {i+1}/3...")
 
-                # Additional headers to mimic browser behavior
-                'headers': {
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'DNT': '1',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                    'Cache-Control': 'max-age=0',
-                },
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    filename = ydl.prepare_filename(info)
+                    # Replace extension with mp3
+                    audio_file = Path(filename).with_suffix('.mp3')
 
-                # Speed optimizations
-                'concurrent_fragments': 4,  # Download multiple fragments simultaneously
-                'fragment_retries': 3,     # Retry failed fragments
-                'retries': 3,              # Retry download on failure
-                'throttled_rate': None,    # Disable throttling
-                'extract_flat': False,     # Extract full metadata
-                'dump_single_json': False, # Don't dump JSON to speed up
+                    # Get original title for AI prompt (preserve special characters for context)
+                    original_title = info['title']
+                    # Sanitize title only for display if needed
+                    sanitized_title = self.sanitize_filename(original_title)
 
-                # Network optimizations
-                'socket_timeout': 30,      # Connection timeout
-                'extractor_retries': 3,    # Retry metadata extraction
+                    return str(audio_file), original_title
 
-                # Performance settings
-                'buffersize': 1024 * 1024, # 1MB buffer size
-                'http_chunk_size': 10 * 1024 * 1024, # 10MB chunks
-            }
+            except Exception as e:
+                if i == len(strategies) - 1:  # Last strategy failed
+                    raise e
+                continue  # Try next strategy
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-                # Replace extension with mp3
-                audio_file = Path(filename).with_suffix('.mp3')
+        return None, None
 
-                # Get original title for AI prompt (preserve special characters for context)
-                original_title = info['title']
-                # Sanitize title only for display if needed
-                sanitized_title = self.sanitize_filename(original_title)
+    def _get_aggressive_strategy(self):
+        """Aggressive strategy with maximum anti-bot measures"""
+        return {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'outtmpl': str(self.videos_dir / 'video_%(id)s.%(ext)s'),
+            'quiet': True,
+            'no_warnings': True,
 
-                return str(audio_file), original_title
+            # Enhanced anti-bot measures for Streamlit Cloud
+            'rm_cachedir': True,
+            'nocheckcertificate': True,
+            'ignoreerrors': False,
 
-        except Exception as e:
-            st.error("⚠️ Unable to download video. Please check the URL and try again.")
-            return None, None
+            # Advanced browser simulation
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'referer': 'https://www.youtube.com/',
+
+            # Comprehensive headers to mimic real browser
+            'headers': {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Cache-Control': 'max-age=0',
+                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Fetch-User': '?1',
+            },
+
+            # Geographic and language settings
+            'geo_bypass': True,
+            'geo_bypass_country': 'US',
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                    'player_skip': ['webpage'],
+                }
+            },
+
+            # Advanced retry and backoff strategy
+            'retry_sleep_functions': {
+                'http': lambda n: min(2**n, 300),
+                'fragment': lambda n: min(2**n, 60),
+            },
+            'extractor_retries': 5,
+            'retries': 5,
+
+            # Conservative networking
+            'concurrent_fragments': 1,
+            'fragment_retries': 3,
+            'throttled_rate': None,
+            'extract_flat': False,
+            'dump_single_json': False,
+            'socket_timeout': 45,
+            'sleep_interval': 3,
+            'max_sleep_interval': 15,
+
+            'buffersize': 1024 * 1024,
+            'http_chunk_size': 5 * 1024 * 1024,
+        }
+
+    def _get_conservative_strategy(self):
+        """Conservative strategy with minimal settings"""
+        return {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '128',
+            }],
+            'outtmpl': str(self.videos_dir / 'video_%(id)s.%(ext)s'),
+            'quiet': True,
+            'no_warnings': True,
+
+            # Basic anti-bot measures
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
+            'referer': 'https://www.youtube.com/',
+            'nocheckcertificate': True,
+            'rm_cachedir': True,
+
+            'headers': {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Encoding': 'gzip, deflate',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+            },
+
+            'geo_bypass': True,
+            'geo_bypass_country': 'US',
+
+            'extractor_retries': 3,
+            'retries': 3,
+            'concurrent_fragments': 1,
+            'socket_timeout': 30,
+            'sleep_interval': 2,
+            'max_sleep_interval': 10,
+        }
+
+    def _get_minimal_strategy(self):
+        """Minimal strategy as last resort"""
+        return {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '96',
+            }],
+            'outtmpl': str(self.videos_dir / 'video_%(id)s.%(ext)s'),
+            'quiet': True,
+            'no_warnings': True,
+
+            # Minimal but essential settings
+            'user_agent': 'Mozilla/5.0 (compatible; yt-dlp)',
+            'nocheckcertificate': True,
+            'rm_cachedir': True,
+
+            'extractor_retries': 2,
+            'retries': 2,
+            'concurrent_fragments': 1,
+            'socket_timeout': 20,
+            'sleep_interval': 1,
+            'max_sleep_interval': 5,
+        }
 
     def transcribe_audio(self, audio_file):
         """Transcribe audio using Whisper"""

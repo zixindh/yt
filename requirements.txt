@@ -1,5 +1,5 @@
 streamlit>=1.28.0
-yt-dlp>=2023.11.16  # Modern replacement for youtube-dl
+yt-dlp==2025.8.22  # Modern replacement for youtube-dl
 openai-whisper>=20231117
 requests>=2.31.0
 python-dotenv>=1.0.0
