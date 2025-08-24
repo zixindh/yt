@@ -117,7 +117,7 @@ class YouTubeSummarizer:
     def download_youtube_video(self, url):
         """Download YouTube video as audio"""
         try:
-            # Configure yt-dlp options with optimized settings for speed
+            # Configure yt-dlp options with optimized settings for speed and anti-bot measures
             ydl_opts = {
                 'format': 'bestaudio/best',
                 'postprocessors': [{
@@ -128,6 +128,23 @@ class YouTubeSummarizer:
                 'outtmpl': str(self.videos_dir / 'video_%(id)s.%(ext)s'),  # Use video ID instead of title
                 'quiet': True,
                 'no_warnings': True,
+
+                # Anti-bot and browser-like headers to prevent 403 errors
+                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+                'referer': 'https://www.youtube.com/',
+                'nocheckcertificate': True,
+                'rm_cachedir': True,  # Clear cache before downloading
+
+                # Additional headers to mimic browser behavior
+                'headers': {
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1',
+                    'Cache-Control': 'max-age=0',
+                },
 
                 # Speed optimizations
                 'concurrent_fragments': 4,  # Download multiple fragments simultaneously
