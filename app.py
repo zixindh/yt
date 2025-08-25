@@ -165,9 +165,12 @@ class YouTubeSummarizer:
             'nocheckcertificate': True,
             'ignoreerrors': False,
 
-            # Advanced browser simulation
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            # Advanced browser simulation with Chrome cookies
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
             'referer': 'https://www.youtube.com/',
+
+            # Use Chrome browser cookies to bypass Cloudflare
+            'cookiesfrombrowser': ['chrome'],
 
             # Comprehensive headers to mimic real browser
             'headers': {
@@ -178,7 +181,7 @@ class YouTubeSummarizer:
                 'Connection': 'keep-alive',
                 'Upgrade-Insecure-Requests': '1',
                 'Cache-Control': 'max-age=0',
-                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="139", "Google Chrome";v="139"',
                 'Sec-Ch-Ua-Mobile': '?0',
                 'Sec-Ch-Ua-Platform': '"Windows"',
                 'Sec-Fetch-Dest': 'document',
@@ -232,11 +235,14 @@ class YouTubeSummarizer:
             'quiet': True,
             'no_warnings': True,
 
-            # Basic anti-bot measures
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
+            # Basic anti-bot measures with Chrome cookies
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
             'referer': 'https://www.youtube.com/',
             'nocheckcertificate': True,
             'rm_cachedir': True,
+
+            # Use Chrome browser cookies to bypass Cloudflare
+            'cookiesfrombrowser': ['chrome'],
 
             'headers': {
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -270,10 +276,13 @@ class YouTubeSummarizer:
             'quiet': True,
             'no_warnings': True,
 
-            # Minimal but essential settings
-            'user_agent': 'Mozilla/5.0 (compatible; yt-dlp)',
+            # Minimal but essential settings with Chrome cookies
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
             'nocheckcertificate': True,
             'rm_cachedir': True,
+
+            # Use Chrome browser cookies to bypass Cloudflare
+            'cookiesfrombrowser': ['chrome'],
 
             'extractor_retries': 2,
             'retries': 2,
