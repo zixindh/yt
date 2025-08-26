@@ -80,8 +80,12 @@ class YouTubeSummarizer:
     def extract_transcript_apify(self, youtube_url):
         """Extract transcript, video title, and channel name from YouTube video using Apify"""
         try:
-            # Initialize the ApifyClient with API token
-            client = ApifyClient("apify_api_rJhfZzud6sk38pBwVXndxtKRN1zqLI0eqE9l")
+            # Initialize the ApifyClient with API token from environment variable
+            api_token = os.getenv("APIFY_API_TOKEN")
+            if not api_token:
+                st.error("❌ Apify API token not found. Please set the APIFY_API_TOKEN environment variable.")
+                return None, None, None
+            client = ApifyClient(api_token)
 
             # Prepare the Actor input
             run_input = {
