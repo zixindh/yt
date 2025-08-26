@@ -1,6 +1,6 @@
-nodejs
+nodejs=18
 npm
-procps
-inotify-tools
+curl
+wget
 ca-certificates
 openssl

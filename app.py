@@ -186,14 +186,37 @@ Create a clear, very concise, comprehensive summary that captures the main point
 
             with st.spinner("Generating summary with Qwen Coder..."):
                 # Call Qwen Coder CLI with the prompt
-                result = subprocess.run([
-                    'node',
-                    '/usr/local/lib/node_modules/@qwen-code/qwen-code/dist/index.js',
-                    '--prompt', prompt
-                ], capture_output=True, text=True, encoding='utf-8', timeout=120)
+                # Try multiple approaches for better compatibility
+                result = None
+                error_details = ""
 
-                if result.returncode != 0:
-                    st.error("⚠️ AI processing failed. Please try again.")
+                # Approach 1: Try using npx (most reliable for Streamlit Cloud)
+                try:
+                    result = subprocess.run([
+                        'npx', '--yes', '@qwen-code/qwen-code',
+                        '--prompt', prompt
+                    ], capture_output=True, text=True, encoding='utf-8', timeout=120)
+                except Exception as e:
+                    error_details += f"npx failed: {str(e)}\n"
+
+                # Approach 2: If npx failed, try direct node path
+                if result is None or result.returncode != 0:
+                    try:
+                        result = subprocess.run([
+                            'node',
+                            '/usr/local/lib/node_modules/@qwen-code/qwen-code/dist/index.js',
+                            '--prompt', prompt
+                        ], capture_output=True, text=True, encoding='utf-8', timeout=120)
+                    except Exception as e:
+                        error_details += f"Direct node path failed: {str(e)}\n"
+
+                if result is None or result.returncode != 0:
+                    error_msg = f"AI processing failed with return code {getattr(result, 'returncode', 'unknown')}"
+                    if result and result.stderr:
+                        error_msg += f"\nError details: {result.stderr.strip()}"
+                    if error_details:
+                        error_msg += f"\nAdditional errors: {error_details.strip()}"
+                    st.error(f"⚠️ {error_msg}")
                     return None
 
                 # Clean the output to remove system messages and keep only the actual summary
