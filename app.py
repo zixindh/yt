@@ -12,16 +12,6 @@ try:
 except ImportError:
     pass  # dotenv not installed, will use system environment variables
 
-# Run startup configuration to set system limits
-try:
-    import subprocess
-    subprocess.run(['sysctl', '-w', 'fs.inotify.max_user_watches=524288'],
-                  check=False, capture_output=True)
-    subprocess.run(['sysctl', '-w', 'fs.inotify.max_user_instances=512'],
-                  check=False, capture_output=True)
-except Exception:
-    pass  # Ignore errors if sysctl is not available
-
 # Page configuration
 st.set_page_config(
     page_title="YouTube Summarizer",
@@ -101,6 +91,10 @@ class YouTubeSummarizer:
             api_token = os.getenv("APIFY_API_TOKEN")
             if not api_token:
                 st.error("❌ Apify API token not found. Please set the APIFY_API_TOKEN environment variable.")
+                st.info("💡 **How to set the environment variable:**")
+                st.write("1. **For permanent solution:** Right-click 'This PC' → Properties → Advanced system settings → Environment Variables → New (under User variables)")
+                st.write("2. **For current session:** Run `set APIFY_API_TOKEN=your_token_here` in Command Prompt")
+                st.write("3. **For Streamlit Cloud:** Add it in the app's Secrets section")
                 return None, None, None
             client = ApifyClient(api_token)
 
@@ -192,53 +186,14 @@ Create a clear, very concise, comprehensive summary that captures the main point
 
             with st.spinner("Generating summary with Qwen Coder..."):
                 # Call Qwen Coder CLI with the prompt
-                # Try multiple approaches to find and run Qwen Coder CLI
-
-                result = None
-
-                # Approach 1: Try using the qwen command directly
-                try:
-                    result = subprocess.run([
-                        'qwen', '--prompt', prompt
-                    ], capture_output=True, text=True, encoding='utf-8', timeout=120)
-                except FileNotFoundError:
-                    pass  # qwen command not found, try next approach
-
-                # Approach 2: If qwen command failed, try with npx
-                if result is None or result.returncode != 0:
-                    try:
-                        result = subprocess.run([
-                            'npx', '@qwen-code/qwen-code', '--prompt', prompt
-                        ], capture_output=True, text=True, encoding='utf-8', timeout=120)
-                    except Exception as e:
-                        st.error(f"❌ Could not run Qwen Coder CLI with npx: {str(e)}")
-                        return None
-
-                # Approach 3: Try to find the installed package and run it directly
-                if result is None or result.returncode != 0:
-                    try:
-                        # Get npm global prefix and try to run the installed package
-                        npm_prefix_result = subprocess.run(['npm', 'config', 'get', 'prefix'],
-                                                         capture_output=True, text=True, timeout=10)
-                        if npm_prefix_result.returncode == 0:
-                            npm_prefix = npm_prefix_result.stdout.strip()
-                            qwen_path = f"{npm_prefix}/bin/qwen"
-
-                            if os.path.exists(qwen_path):
-                                result = subprocess.run([
-                                    qwen_path, '--prompt', prompt
-                                ], capture_output=True, text=True, encoding='utf-8', timeout=120)
-                    except Exception as e:
-                        st.error(f"❌ Could not find Qwen Coder CLI installation: {str(e)}")
-                        return None
+                result = subprocess.run([
+                    'node',
+                    '/usr/local/lib/node_modules/@qwen-code/qwen-code/dist/index.js',
+                    '--prompt', prompt
+                ], capture_output=True, text=True, encoding='utf-8', timeout=120)
 
                 if result.returncode != 0:
-                    error_msg = f"AI processing failed with return code {result.returncode}"
-                    if result.stderr:
-                        error_msg += f"\nError details: {result.stderr.strip()}"
-                    if result.stdout:
-                        error_msg += f"\nOutput: {result.stdout.strip()}"
-                    st.error(f"⚠️ {error_msg}")
+                    st.error("⚠️ AI processing failed. Please try again.")
                     return None
 
                 # Clean the output to remove system messages and keep only the actual summary
