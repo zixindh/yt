@@ -8,3 +8,7 @@ gatherUsageStats = false
 [theme]
 base = "light"
 primaryColor = "#007bff"
+
+# Disable file watching to prevent inotify limit issues
+[fileWatcher]
+type = "none"

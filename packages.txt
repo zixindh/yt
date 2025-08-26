@@ -1,4 +1,6 @@
 nodejs
 npm
-curl
-wget
+procps
+inotify-tools
+ca-certificates
+openssl

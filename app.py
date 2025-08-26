@@ -12,6 +12,16 @@ try:
 except ImportError:
     pass  # dotenv not installed, will use system environment variables
 
+# Run startup configuration to set system limits
+try:
+    import subprocess
+    subprocess.run(['sysctl', '-w', 'fs.inotify.max_user_watches=524288'],
+                  check=False, capture_output=True)
+    subprocess.run(['sysctl', '-w', 'fs.inotify.max_user_instances=512'],
+                  check=False, capture_output=True)
+except Exception:
+    pass  # Ignore errors if sysctl is not available
+
 # Page configuration
 st.set_page_config(
     page_title="YouTube Summarizer",
