@@ -1,0 +1,8 @@
+# System dependencies for Streamlit Cloud
+# Node.js for Qwen Coder CLI
+nodejs
+npm
+
+# Additional dependencies if needed
+curl
+wget

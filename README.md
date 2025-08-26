@@ -47,6 +47,11 @@ Just paste any YouTube URL and get instant summaries with speaker identification
    - `streamlit` - Web interface
    - `apify-client` - YouTube transcript extraction
 
+4. **Set up environment variables**:
+   - Copy `env-example.txt` to `.env`
+   - Get your Apify API token from: https://console.apify.com/account/integrations
+   - Set the token: `APIFY_API_TOKEN=your_token_here`
+
 ### Running the Application
 
 ```bash
@@ -92,9 +97,15 @@ The application will open in your default web browser at `http://localhost:8501`
 youtube-summarizer/
 ├── app.py                 # Main Streamlit application
 ├── requirements.txt       # Python dependencies
+├── packages.txt          # System dependencies for Streamlit Cloud
+├── runtime.txt           # Python version specification
+├── setup_qwen.sh         # Qwen Coder CLI installation script
+├── env-example.txt       # Environment variables template
 ├── context.md            # Project description
 ├── README.md             # This file
-└── test_apify_transcript.py # Test script for Apify integration
+├── test_apify_transcript.py # Test script for Apify integration
+└── .streamlit/           # Streamlit configuration
+    └── config.toml       # Streamlit settings
 ```
 
 ## ⚠️ Important Notes
@@ -102,8 +113,50 @@ youtube-summarizer/
 - **Processing Time**: Fast transcript extraction and AI summarization
 - **Internet Required**: For Apify transcript extraction and Qwen Code API calls
 - **Qwen Code**: Must be installed and accessible in system PATH
-- **Apify API**: Requires Apify account and API token configuration
+- **Apify API**: Requires Apify account and API token (set as environment variable)
+- **Environment Variables**: APIFY_API_TOKEN must be configured for the app to work
 - **Subtitle Availability**: Only works with videos that have subtitle tracks available
+
+## 🔐 Environment Variables Setup
+
+### For Local Development
+
+1. **Create a `.env` file** in the project root:
+   ```bash
+   cp env-example.txt .env
+   ```
+
+2. **Edit `.env` file** and add your Apify API token:
+   ```
+   APIFY_API_TOKEN=your_actual_token_here
+   ```
+
+3. **Install python-dotenv** (optional, for automatic loading):
+   ```bash
+   pip install python-dotenv
+   ```
+
+### For Streamlit Cloud Deployment
+
+1. **Go to your Streamlit app dashboard**
+2. **Navigate to Settings → Secrets**
+3. **Add the secret**:
+   ```
+   APIFY_API_TOKEN = "your_actual_token_here"
+   ```
+
+4. **Deploy automatically** - Streamlit Cloud will:
+   - Install system dependencies from `packages.txt`
+   - Run the setup script `setup_qwen.sh` to install Qwen Coder CLI
+   - Install Python packages from `requirements.txt`
+   - Start your app with the configured secrets
+
+### Getting Your Apify API Token
+
+1. **Sign up/Login** to [Apify Console](https://console.apify.com/)
+2. **Go to Settings → Integrations**
+3. **Copy your API token**
+4. **Add it to your environment variables** as shown above
 
 ## 🎯 Supported Content
 
@@ -137,6 +190,12 @@ youtube-summarizer/
 5. **"Module 'apify_client' not found"**
    - Install the apify-client package: `pip install apify-client`
    - Make sure you're using the correct Python environment
+
+6. **"Apify API token not found"**
+   - Set the APIFY_API_TOKEN environment variable
+   - For local: Create `.env` file with your token
+   - For Streamlit Cloud: Add secret in app settings
+   - Get token from: https://console.apify.com/account/integrations
 
 ### Getting Help
 
