@@ -1,10 +1,9 @@
 import streamlit as st
-import yt_dlp
-import whisper
 import os
 import tempfile
 import subprocess
-from pathlib import Path
+import re
+from apify_client import ApifyClient
 
 # Page configuration
 st.set_page_config(
@@ -76,249 +75,69 @@ st.markdown("""
 
 class YouTubeSummarizer:
     def __init__(self):
-        self.videos_dir = Path("videos")
-        self.videos_dir.mkdir(exist_ok=True)
-
-        # Initialize models (lazy loading)
-        self.whisper_model = None
-
-        # Set FFmpeg path for Whisper
-        self._set_ffmpeg_for_whisper()
-
-    def load_whisper_model(self):
-        """Load Whisper model for transcription"""
-        if self.whisper_model is None:
-            with st.spinner("Loading Whisper model..."):
-                self.whisper_model = whisper.load_model("base")
-        return self.whisper_model
-
-    def _set_ffmpeg_for_whisper(self):
-        """Set FFmpeg path for Whisper to use"""
-        # Assume FFmpeg is available in PATH
         pass
 
-    def sanitize_filename(self, filename):
-        """Sanitize filename to remove problematic characters for Windows"""
-        import re
-        # Replace problematic characters with underscores (including Unicode)
-        # Windows reserved characters: < > : " | ? * \ / and control chars
-        sanitized = re.sub(r'[<>:"|?*\x00-\x1f]', '_', filename)
-        # Also handle common Unicode punctuation that causes issues
-        sanitized = re.sub(r'[：？]', '_', sanitized)  # Chinese colon and question mark
-        sanitized = re.sub(r'[。·！@#￥%……&*（）——+【】、；]', '_', sanitized)  # Other Unicode punctuation
-        # Replace backslashes and forward slashes
-        sanitized = re.sub(r'[/\\]', '_', sanitized)
-        # Remove multiple consecutive underscores
-        sanitized = re.sub(r'_+', '_', sanitized)
-        # Remove leading/trailing spaces and dots
-        sanitized = sanitized.strip(' ._')
-        return sanitized
-
-    def download_youtube_video(self, url):
-        """Download YouTube video as audio with multiple fallback strategies"""
-        strategies = [
-            self._get_aggressive_strategy(),
-            self._get_conservative_strategy(),
-            self._get_minimal_strategy()
-        ]
-
-        for i, ydl_opts in enumerate(strategies):
-            try:
-                if i > 0:
-                    st.info(f"🔄 Trying alternative download strategy {i+1}/3...")
-
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(url, download=True)
-                    filename = ydl.prepare_filename(info)
-                    # Replace extension with mp3
-                    audio_file = Path(filename).with_suffix('.mp3')
-
-                    # Get original title for AI prompt (preserve special characters for context)
-                    original_title = info['title']
-                    # Sanitize title only for display if needed
-                    sanitized_title = self.sanitize_filename(original_title)
-
-                    return str(audio_file), original_title
-
-            except Exception as e:
-                if i == len(strategies) - 1:  # Last strategy failed
-                    raise e
-                continue  # Try next strategy
-
-        return None, None
-
-    def _get_aggressive_strategy(self):
-        """Aggressive strategy with maximum anti-bot measures"""
-        return {
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-            'outtmpl': str(self.videos_dir / 'video_%(id)s.%(ext)s'),
-            'quiet': True,
-            'no_warnings': True,
-
-            # Enhanced anti-bot measures for Streamlit Cloud
-            'rm_cachedir': True,
-            'nocheckcertificate': True,
-            'ignoreerrors': False,
-
-            # Advanced browser simulation with Firefox cookies
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0) Gecko/20100101 Firefox/142.0',
-            'referer': 'https://www.youtube.com/',
-
-            # Use Firefox browser cookies to bypass Cloudflare
-            'cookiesfrombrowser': ['firefox'],
-
-            # Comprehensive headers to mimic Firefox browser
-            'headers': {
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'DNT': '1',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-                'Cache-Control': 'max-age=0',
-            },
-
-            # Geographic and language settings
-            'geo_bypass': True,
-            'geo_bypass_country': 'US',
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'web'],
-                    'player_skip': ['webpage'],
-                }
-            },
-
-            # Advanced retry and backoff strategy
-            'retry_sleep_functions': {
-                'http': lambda n: min(2**n, 300),
-                'fragment': lambda n: min(2**n, 60),
-            },
-            'extractor_retries': 5,
-            'retries': 5,
-
-            # Conservative networking
-            'concurrent_fragments': 1,
-            'fragment_retries': 3,
-            'throttled_rate': None,
-            'extract_flat': False,
-            'dump_single_json': False,
-            'socket_timeout': 45,
-            'sleep_interval': 3,
-            'max_sleep_interval': 15,
-
-            'buffersize': 1024 * 1024,
-            'http_chunk_size': 5 * 1024 * 1024,
-        }
-
-    def _get_conservative_strategy(self):
-        """Conservative strategy with minimal settings"""
-        return {
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '128',
-            }],
-            'outtmpl': str(self.videos_dir / 'video_%(id)s.%(ext)s'),
-            'quiet': True,
-            'no_warnings': True,
-
-            # Basic anti-bot measures with Firefox cookies
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0) Gecko/20100101 Firefox/142.0',
-            'referer': 'https://www.youtube.com/',
-            'nocheckcertificate': True,
-            'rm_cachedir': True,
-
-            # Use Firefox browser cookies to bypass Cloudflare
-            'cookiesfrombrowser': ['firefox'],
-
-            'headers': {
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-                'Accept-Encoding': 'gzip, deflate',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-            },
-
-            'geo_bypass': True,
-            'geo_bypass_country': 'US',
-
-            'extractor_retries': 3,
-            'retries': 3,
-            'concurrent_fragments': 1,
-            'socket_timeout': 30,
-            'sleep_interval': 2,
-            'max_sleep_interval': 10,
-        }
-
-    def _get_minimal_strategy(self):
-        """Minimal strategy as last resort"""
-        return {
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '96',
-            }],
-            'outtmpl': str(self.videos_dir / 'video_%(id)s.%(ext)s'),
-            'quiet': True,
-            'no_warnings': True,
-
-            # Minimal but essential settings with Firefox cookies
-            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:142.0) Gecko/20100101 Firefox/142.0',
-            'nocheckcertificate': True,
-            'rm_cachedir': True,
-
-            # Use Firefox browser cookies to bypass Cloudflare
-            'cookiesfrombrowser': ['firefox'],
-
-            'extractor_retries': 2,
-            'retries': 2,
-            'concurrent_fragments': 1,
-            'socket_timeout': 20,
-            'sleep_interval': 1,
-            'max_sleep_interval': 5,
-        }
-
-    def transcribe_audio(self, audio_file):
-        """Transcribe audio using Whisper"""
+    def extract_transcript_apify(self, youtube_url):
+        """Extract transcript, video title, and channel name from YouTube video using Apify"""
         try:
-            # Convert to absolute path
-            audio_path = Path(audio_file).resolve()
+            # Initialize the ApifyClient with API token
+            client = ApifyClient("apify_api_rJhfZzud6sk38pBwVXndxtKRN1zqLI0eqE9l")
 
-            # Check if audio file exists
-            if not audio_path.exists():
-                st.error("⚠️ Audio processing failed. Please try again.")
-                return None
+            # Prepare the Actor input
+            run_input = {
+                "startUrls": [youtube_url],
+                "language": "Default",
+                "includeTimestamps": "No",
+            }
 
-            # Check file size (empty files would be problematic)
-            file_size = audio_path.stat().st_size
+            # Run the Actor and wait for it to finish
+            run = client.actor("dB9f4B02ocpTICIEY").call(run_input=run_input)
 
-            if file_size == 0:
-                st.error("⚠️ Audio processing failed. Please try again.")
-                return None
+            # Check if the run was successful
+            if not run or not run.get("defaultDatasetId"):
+                st.error("❌ Apify actor failed to process the video.")
+                return None, None, None
 
-            # Additional checks
-            if not audio_path.is_file():
-                st.error("⚠️ Audio processing failed. Please try again.")
-                return None
+            # Fetch and process results
+            transcript_text = ""
+            video_title = None
+            channel_name = None
 
-            model = self.load_whisper_model()
+            for item in client.dataset(run["defaultDatasetId"]).iterate_items():
+                # Extract video title if available
+                if 'videoTitle' in item and item['videoTitle']:
+                    video_title = item['videoTitle']
 
-            with st.spinner("Transcribing audio..."):
-                result = model.transcribe(str(audio_path))
-                return result["text"]
+                # Extract channel name if available
+                if 'channelName' in item and item['channelName']:
+                    channel_name = item['channelName']
+
+                # Extract transcript content
+                if 'transcript' in item and item['transcript']:
+                    transcript_text += item['transcript'] + "\n"
+                elif 'text' in item and item['text']:
+                    transcript_text += item['text'] + "\n"
+
+            if not transcript_text.strip():
+                st.error("❌ No transcript found in the video.")
+                return None, video_title or "YouTube Video", channel_name or "Unknown Channel"
+
+            return transcript_text, video_title or "YouTube Video", channel_name or "Unknown Channel"
+
 
         except Exception as e:
-            st.error("⚠️ Audio transcription failed. Please try again.")
-            return None
+            st.error(f"❌ Error extracting transcript: {str(e)}")
+            return None, "YouTube Video", "Unknown Channel"
 
-    def summarize_text(self, text, video_title=None):
+    def get_video_title_from_url(self, youtube_url):
+        """Extract video title from YouTube URL (simplified approach)"""
+        try:
+            # For now, return a generic title - could be enhanced later
+            return "YouTube Video"
+        except:
+            return "YouTube Video"
+
+    def summarize_text(self, text, video_title=None, channel_name=None):
         """Summarize text using Qwen Coder CLI"""
         try:
             # Create a temporary file with the transcript
@@ -326,21 +145,29 @@ class YouTubeSummarizer:
                 temp_file.write(text)
                 temp_file_path = temp_file.name
 
-            # Prepare the prompt for Qwen Code with video title context
-            if video_title:
+            # Prepare the prompt for Qwen Code with video title and channel context
+            if video_title and channel_name:
+                prompt = f"""You are analyzing a YouTube video from the channel "{channel_name}" titled: "{video_title}"
+
+Please provide a very concise summary of the following transcript from this video. Based on your knowledge of the channel and content, identify the likely speaker(s) and include this information in your summary:
+
+{text}
+
+Create a clear, comprehensive summary that captures the main points, key information, context from the video title, and identifies the speaker(s) where possible."""
+            elif video_title:
                 prompt = f"""You are analyzing a YouTube video titled: "{video_title}"
 
-Please provide a very concise summary of the following transcript from this video:
+Please provide a very concise summary of the following transcript from this video. Based on the content and context, try to identify the likely speaker(s):
 
 {text}
 
-Create a clear, comprehensive summary that captures the main points, key information, and context from the video title."""
+Create a clear, comprehensive summary that captures the main points, key information, context from the video title, and identifies the speaker(s) where possible."""
             else:
-                prompt = f"""Please provide a very concise summary of the following transcript:
+                prompt = f"""Please provide a very concise summary of the following transcript. Based on the content, try to identify the likely speaker(s):
 
 {text}
 
-Create a clear, very concise, comprehensive summary that captures the main points and key information."""
+Create a clear, very concise, comprehensive summary that captures the main points and key information, including speaker identification where possible."""
 
             with st.spinner("Generating summary with Qwen Coder..."):
                 # Call Qwen Coder CLI with the prompt
@@ -405,6 +232,47 @@ Create a clear, very concise, comprehensive summary that captures the main point
             st.error("⚠️ AI processing failed. Please try again.")
             return None
 
+
+
+    def parse_transcript_file(self, transcript_file_path):
+        """Parse transcript file and extract clean text"""
+        try:
+            with open(transcript_file_path, 'r', encoding='utf-8') as file:
+                content = file.read()
+
+            # Clean up the transcript text
+            transcript = re.sub(r'\s+', ' ', content).strip()
+
+            return transcript if transcript else None
+
+        except Exception as e:
+            st.error(f"❌ Error parsing transcript file: {str(e)}")
+            return None
+
+    def extract_transcript_and_title(self, youtube_url):
+        """Extract transcript from YouTube video using Apify and get video title and channel"""
+        try:
+            # Extract transcript, title, and channel using Apify
+            result = self.extract_transcript_apify(youtube_url)
+            if not result or not result[0]:
+                video_title = result[1] if result and len(result) > 1 else "YouTube Video"
+                channel_name = result[2] if result and len(result) > 2 else "Unknown Channel"
+                return None, video_title, channel_name
+
+            transcript_text, video_title, channel_name = result
+
+            # Clean up the transcript text (remove extra whitespace)
+            transcript = re.sub(r'\s+', ' ', transcript_text).strip()
+
+            if not transcript:
+                return None, video_title, channel_name
+
+            return transcript, video_title, channel_name
+
+        except Exception as e:
+            st.error(f"❌ Error processing video: {str(e)}")
+            return None, "YouTube Video", "Unknown Channel"
+
 def main():
     st.markdown('<div class="main-header">YouTube Video Summarizer</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Get quick summaries from YouTube videos</div>', unsafe_allow_html=True)
@@ -438,22 +306,16 @@ def main():
         status_text = st.empty()
 
         try:
-            # Step 1: Download video
-            status_text.text("Processing video...")
-            progress_bar.progress(10)
+            # Step 1: Download subtitles and extract transcript
+            status_text.text("Extracting transcript...")
+            progress_bar.progress(25)
 
-            audio_file, video_title = summarizer.download_youtube_video(url)
-            if not audio_file:
+            result = summarizer.extract_transcript_and_title(url)
+
+            if not result or not result[0]:
                 return
 
-            progress_bar.progress(30)
-
-            # Step 2: Transcribe audio
-            status_text.text("Converting to text...")
-            transcript = summarizer.transcribe_audio(audio_file)
-
-            if not transcript:
-                return
+            transcript, video_title, channel_name = result
 
             progress_bar.progress(60)
 
@@ -461,9 +323,9 @@ def main():
             with st.expander("View full transcript"):
                 st.text_area("Full transcript", transcript, height=200, disabled=True, label_visibility="hidden")
 
-            # Step 3: Generate summary
+            # Step 2: Generate summary
             status_text.text("Creating summary...")
-            summary = summarizer.summarize_text(transcript, video_title)
+            summary = summarizer.summarize_text(transcript, video_title, channel_name)
 
             if not summary:
                 return
@@ -474,12 +336,6 @@ def main():
             # Display results - focus on summary
             st.markdown("### Summary")
             st.markdown(f'<div class="success-message">{summary}</div>', unsafe_allow_html=True)
-
-            # Cleanup
-            try:
-                os.remove(audio_file)
-            except:
-                pass
 
         except Exception as e:
             st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)

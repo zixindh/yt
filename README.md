@@ -1,25 +1,36 @@
 # 🎥 YouTube Video AI Summarizer
 
-A powerful Streamlit application that automatically downloads YouTube videos, transcribes them using AI, and generates concise summaries using advanced language models.
+A streamlined Streamlit application that automatically extracts YouTube video transcripts using Apify and generates intelligent summaries with speaker identification using Qwen Coder.
+
+🎉 **Try it now:** [https://youtuberead.streamlit.app/](https://youtuberead.streamlit.app/)
 
 ## ✨ Features
 
-- **Easy to Use**: Simply paste any YouTube URL and get instant summaries
-- **AI-Powered**: Uses Whisper for accurate transcription and Qwen for intelligent summarization
-- **Modern Tech**: Built with the latest AI models and tools
-- **Clean UI**: Beautiful, responsive interface with progress tracking
-- **Automatic Cleanup**: Manages temporary files efficiently
+- **Simple & Fast**: Just paste a YouTube URL and get instant summaries
+- **AI-Powered**: Uses Qwen Coder for intelligent summarization with speaker identification
+- **Channel Context**: Extracts video title and channel name for better context
+- **Speaker Identification**: AI identifies likely speakers based on channel and content
+- **Clean UI**: Beautiful, minimal interface focused on automatic processing
+- **No Manual Upload**: Fully automated - no file uploads needed
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Option 1: Use the Deployed App (Easiest)
+
+🎉 **No installation required!** Use the live app directly:
+
+👉 **[https://youtuberead.streamlit.app/](https://youtuberead.streamlit.app/)**
+
+Just paste any YouTube URL and get instant summaries with speaker identification.
+
+### Option 2: Run Locally
+
+#### Prerequisites
 
 - Python 3.8+
-- FFmpeg (for audio processing)
 - Qwen Code CLI installed and accessible in PATH
-- At least 8GB RAM recommended for running AI models
 
-### Installation
+#### Installation
 
 1. **Clone the repository** (if applicable) or navigate to the project folder
 
@@ -32,10 +43,9 @@ A powerful Streamlit application that automatically downloads YouTube videos, tr
    pip install -r requirements.txt
    ```
 
-4. **Install FFmpeg** (required for audio processing):
-   - **Windows**: Download from [FFmpeg website](https://ffmpeg.org/download.html)
-   - **macOS**: `brew install ffmpeg`
-   - **Linux**: `sudo apt install ffmpeg`
+   The `requirements.txt` includes:
+   - `streamlit` - Web interface
+   - `apify-client` - YouTube transcript extraction
 
 ### Running the Application
 
@@ -47,28 +57,34 @@ The application will open in your default web browser at `http://localhost:8501`
 
 ## 📖 How to Use
 
-1. **Paste URL**: Copy and paste any YouTube video URL into the input field
-2. **Click Summarize**: Press the "🚀 Summarize Video" button
-3. **Wait for Processing**: Watch the progress bar as the app:
-   - Downloads the video audio
-   - Transcribes it using Whisper
-   - Generates a summary using Qwen
-4. **View Results**: Read the AI-generated summary and optionally view the full transcript
+### Using the Deployed App
+1. **Open the app**: Visit [https://youtuberead.streamlit.app/](https://youtuberead.streamlit.app/)
+2. **Paste YouTube URL**: Copy and paste any YouTube video URL into the input field
+3. **Click Summarize**: Press the "Summarize" button
+4. **Get Results**: View the AI-generated summary with speaker identification
+
+### Using Locally (Advanced)
+1. **Paste YouTube URL**: Copy and paste any YouTube video URL into the input field
+2. **Click Summarize**: Press the "Summarize" button
+3. **Automatic Processing**: Watch the progress bar as the app:
+   - Uses Apify to extract the video transcript, title, and channel name
+   - Processes the transcript content for analysis
+   - Generates a summary using Qwen Coder with speaker identification
+4. **View Results**: Read the AI-generated summary with identified speakers and optionally view the full transcript
 
 ## 🛠️ Technical Details
 
 ### Architecture
 
 - **Frontend**: Streamlit for responsive web UI
-- **Video Download**: yt-dlp (modern replacement for youtube-dl)
-- **Transcription**: OpenAI Whisper model
-- **Summarization**: Qwen Coder CLI assistant with contextual prompts
-- **Audio Processing**: FFmpeg for format conversion
+- **Transcript Extraction**: Apify for automatic YouTube transcript and metadata retrieval
+- **AI Summarization**: Qwen Coder CLI assistant with speaker identification
+- **Data Processing**: Direct text processing with channel and video context
 
 ### Tools Used
 
-- **Whisper Base**: Fast and accurate speech recognition
-- **Qwen Coder CLI**: Free coding assistant for text summarization
+- **Apify**: Cloud-based web scraping and data extraction service
+- **Qwen Coder CLI**: Free coding assistant for intelligent text summarization
 
 ### File Structure
 
@@ -78,24 +94,23 @@ youtube-summarizer/
 ├── requirements.txt       # Python dependencies
 ├── context.md            # Project description
 ├── README.md             # This file
-└── videos/               # Temporary video storage (auto-created)
+└── test_apify_transcript.py # Test script for Apify integration
 ```
 
 ## ⚠️ Important Notes
 
-- **First Run**: The app will download Whisper model on first use (~1GB)
-- **Memory Usage**: Only Whisper model requires significant RAM (~4GB)
-- **Processing Time**: Depends on video length (typically 1-2x video duration)
-- **Internet Required**: For downloading videos and Qwen Code API calls
-- **Storage**: Temporary files are cleaned up automatically
+- **Processing Time**: Fast transcript extraction and AI summarization
+- **Internet Required**: For Apify transcript extraction and Qwen Code API calls
 - **Qwen Code**: Must be installed and accessible in system PATH
+- **Apify API**: Requires Apify account and API token configuration
+- **Subtitle Availability**: Only works with videos that have subtitle tracks available
 
 ## 🎯 Supported Content
 
-- Most YouTube videos (including age-restricted content if you have access)
-- Various video qualities (automatically selects best audio)
-- Multiple languages (Whisper supports 99+ languages)
-- Videos up to 2 hours in length (longer videos may timeout)
+- YouTube videos with subtitle/caption tracks available
+- Automatic extraction of video title and channel name
+- Speaker identification based on channel and content context
+- Multiple languages (depending on subtitle availability)
 
 ## 🐛 Troubleshooting
 
@@ -105,24 +120,23 @@ youtube-summarizer/
    - Install Qwen Coder and ensure the `qwen` command is available in your PATH
    - Ensure `qwen` command is accessible from your terminal
 
-2. **"FFmpeg not found"**
-   - Install FFmpeg and ensure it's in your system PATH
-
-3. **"CUDA out of memory"**
-   - The app will automatically fall back to CPU if GPU memory is insufficient
-   - Consider using a smaller Whisper model by modifying the code
-
-4. **"Model download failed"**
+2. **"Apify actor failed to process the video"**
+   - Check your Apify API token configuration in the code
+   - The video might not have subtitle tracks available on YouTube
    - Check your internet connection
-   - Ensure you have sufficient disk space (~1GB for Whisper model)
 
-5. **"Qwen Code timeout"**
-   - The text might be too long for processing
-   - Try with shorter videos or break long transcripts into smaller chunks
+3. **"No transcript found in the video"**
+   - The video might not have subtitle tracks available
+   - Check if the video has captions enabled (CC button)
+   - Try a different video with available subtitles
 
-6. **Slow processing**
-   - Use shorter videos for faster results
-   - Consider using GPU if available (modify code to use GPU)
+4. **"Qwen Code timeout"**
+   - The transcript text might be too long for processing
+   - Try with shorter videos or shorter transcripts
+
+5. **"Module 'apify_client' not found"**
+   - Install the apify-client package: `pip install apify-client`
+   - Make sure you're using the correct Python environment
 
 ### Getting Help
 
