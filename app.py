@@ -199,17 +199,6 @@ Create a clear, very concise, comprehensive summary that captures the main point
                 except Exception as e:
                     error_details += f"npx failed: {str(e)}\n"
 
-                # Approach 2: If npx failed, try direct node path
-                if result is None or result.returncode != 0:
-                    try:
-                        result = subprocess.run([
-                            'node',
-                            '/usr/local/lib/node_modules/@qwen-code/qwen-code/dist/index.js',
-                            '--prompt', prompt
-                        ], capture_output=True, text=True, encoding='utf-8', timeout=120)
-                    except Exception as e:
-                        error_details += f"Direct node path failed: {str(e)}\n"
-
                 if result is None or result.returncode != 0:
                     error_msg = f"AI processing failed with return code {getattr(result, 'returncode', 'unknown')}"
                     if result and result.stderr:

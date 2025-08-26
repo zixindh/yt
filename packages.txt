@@ -2,3 +2,5 @@ curl
 wget
 ca-certificates
 openssl
+nodejs
+npm
