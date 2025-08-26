@@ -1,5 +1,3 @@
-nodejs=18
-npm
 curl
 wget
 ca-certificates
