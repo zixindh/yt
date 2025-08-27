@@ -19,7 +19,7 @@ A Streamlit application that automatically summarizes YouTube videos using AI.
 from apify_client import ApifyClient
 
 # Initialize the ApifyClient with your API token
-client = ApifyClient("apify_api_rJhfZzud6sk38pBwVXndxtKRN1zqLI0eqE9l")
+client = ApifyClient("api_token")
 
 # Prepare the Actor input
 run_input = {
@@ -33,4 +33,5 @@ run = client.actor("dB9f4B02ocpTICIEY").call(run_input=run_input)
 
 # Fetch and print Actor results from the run's dataset (if there are any)
 for item in client.dataset(run["defaultDatasetId"]).iterate_items():
+
     print(item)
