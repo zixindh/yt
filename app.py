@@ -53,6 +53,39 @@ st.markdown("""
         font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
+    @media (prefers-color-scheme: dark) {
+        .success-message {
+            background-color: #2c2c2e;
+            border: 1px solid #3a3a3c;
+            color: #e0e0e0;
+        }
+
+        .success-message table {
+            border: 1px solid #3a3a3c;
+        }
+
+        .success-message th,
+        .success-message td {
+            border: 1px solid #3a3a3c;
+        }
+
+        .success-message th {
+            background-color: #3a3a3c;
+        }
+
+        .success-message tr:nth-child(even) {
+            background-color: #333335;
+        }
+
+        .success-message code {
+            background-color: #3a3a3c;
+        }
+
+        .success-message pre {
+            background-color: #3a3a3c;
+        }
+    }
+
     .success-message table {
         border-collapse: collapse;
         width: 100%;
