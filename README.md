@@ -1,13 +1,14 @@
 # 🎥 YouTube Video AI Summarizer
 
-A streamlined Streamlit application that automatically extracts YouTube video transcripts using Apify and generates intelligent summaries using OpenRouter AI.
+A streamlined Streamlit application that automatically extracts YouTube video transcripts using Apify and generates intelligent summaries or answers specific questions using OpenRouter AI.
 
 🎉 **Try it now:** [https://youtuberead.streamlit.app/](https://youtuberead.streamlit.app/)
 
 ## ✨ Features
 
-- **Simple & Fast**: Just paste a YouTube URL and get instant summaries
-- **AI-Powered**: Uses OpenRouter AI for intelligent summarization
+- **Simple & Fast**: Just paste a YouTube URL and get instant summaries or answers
+- **AI-Powered**: Uses OpenRouter AI for intelligent summarization and Q&A
+- **Custom Questions**: Ask specific questions about video content
 - **Channel Context**: Extracts video title and channel name for better context
 - **Clean UI**: Beautiful, minimal interface focused on automatic processing
 - **No Manual Upload**: Fully automated - no file uploads needed
@@ -20,7 +21,7 @@ A streamlined Streamlit application that automatically extracts YouTube video tr
 
 👉 **[https://youtuberead.streamlit.app/](https://youtuberead.streamlit.app/)**
 
-Just paste any YouTube URL and get instant summaries with speaker identification.
+Just paste any YouTube URL and get instant summaries or answers to your specific questions.
 
 ### Option 2: Run Locally
 
@@ -68,17 +69,19 @@ The application will open in your default web browser at `http://localhost:8501`
 ### Using the Deployed App
 1. **Open the app**: Visit [https://youtuberead.streamlit.app/](https://youtuberead.streamlit.app/)
 2. **Paste YouTube URL**: Copy and paste any YouTube video URL into the input field
-3. **Click Summarize**: Press the "Summarize" button
-4. **Get Results**: View the AI-generated summary
+3. **Optional**: Click "🤔 Ask a specific question (Optional)" to expand and add a custom question
+4. **Click Summarize**: Press the "Summarize" button
+5. **Get Results**: View the AI-generated summary or answer to your question
 
 ### Using Locally (Advanced)
 1. **Paste YouTube URL**: Copy and paste any YouTube video URL into the input field
-2. **Click Summarize**: Press the "Summarize" button
-3. **Automatic Processing**: Watch the progress bar as the app:
+2. **Optional**: Click "🤔 Ask a specific question (Optional)" to expand and add a custom question
+3. **Click Summarize**: Press the "Summarize" button
+4. **Automatic Processing**: Watch the progress bar as the app:
    - Uses Apify to extract the video transcript, title, and channel name
    - Processes the transcript content for analysis
-   - Generates a summary using OpenRouter AI
-4. **View Results**: Read the AI-generated summary and optionally view the full transcript
+   - Generates a summary or answers your question using OpenRouter AI
+5. **View Results**: Read the AI-generated summary/answer and optionally view the full transcript
 
 ## 🛠️ Technical Details
 
@@ -86,8 +89,8 @@ The application will open in your default web browser at `http://localhost:8501`
 
 - **Frontend**: Streamlit for responsive web UI
 - **Transcript Extraction**: Apify for automatic YouTube transcript and metadata retrieval
-- **AI Summarization**: OpenRouter API with GPT-OSS-20B model
-- **Data Processing**: Direct text processing with channel and video context
+- **AI Processing**: OpenRouter API with GPT-OSS-20B model (supports both summarization and Q&A)
+- **Data Processing**: Conditional prompt handling with channel and video context
 
 ### Tools Used
 
@@ -220,12 +223,24 @@ model="anthropic/claude-3-haiku:beta"
 model="meta-llama/llama-3-8b-instruct"
 ```
 
+### Custom Questions
+
+Users can ask specific questions about video content through the custom prompt input box, or leave it empty for automatic summarization.
+
 ### Adjusting Prompts
 
-The app automatically includes video context when generating summaries. You can customize the prompt structure by modifying the prompt templates in `app.py`:
+The app automatically includes video context when generating responses. You can customize the prompt structure by modifying the prompt templates in `app.py`:
 
 ```python
-# Customize the prompt format
+# For custom questions
+prompt = f"""You are analyzing a YouTube video titled: "{video_title}"
+
+Transcript:
+{transcript}
+
+User Question: {custom_prompt}"""
+
+# For automatic summarization
 prompt = f"""You are analyzing a YouTube video titled: "{video_title}"
 
 Please provide a concise summary of the following transcript:

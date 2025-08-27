@@ -90,13 +90,6 @@ class YouTubeSummarizer:
         try:
             # Initialize the ApifyClient with API token from environment variable
             api_token = os.getenv("APIFY_API_TOKEN")
-            if not api_token:
-                st.error("❌ Apify API token not found. Please set the APIFY_API_TOKEN environment variable.")
-                st.info("💡 **How to set the environment variable:**")
-                st.write("1. **For permanent solution:** Right-click 'This PC' → Properties → Advanced system settings → Environment Variables → New (under User variables)")
-                st.write("2. **For current session:** Run `set APIFY_API_TOKEN=your_token_here` in Command Prompt")
-                st.write("3. **For Streamlit Cloud:** Add it in the app's Secrets section")
-                return None, None, None
             client = ApifyClient(api_token)
 
             # Prepare the Actor input
@@ -153,7 +146,7 @@ class YouTubeSummarizer:
         except:
             return "YouTube Video"
 
-    def summarize_text(self, text, video_title=None, channel_name=None):
+    def summarize_text(self, text, video_title=None, channel_name=None, custom_prompt=None):
         """Summarize text using OpenRouter API"""
         try:
             # Get API key from environment
@@ -169,30 +162,58 @@ class YouTubeSummarizer:
             )
 
             # Prepare the prompt
-            if video_title and channel_name:
-                prompt = f"""You are analyzing a YouTube video from the channel "{channel_name}" titled: "{video_title}"
+            if custom_prompt and custom_prompt.strip():
+                # Use custom prompt with transcript context
+                if video_title and channel_name:
+                    prompt = f"""You are analyzing a YouTube video from the channel "{channel_name}" titled: "{video_title}"
 
-Please provide a concise summary of the following transcript:
-
+Transcript:
 {text}
 
-Create a clear summary that captures the main points and key information."""
-            elif video_title:
-                prompt = f"""You are analyzing a YouTube video titled: "{video_title}"
+User Question: {custom_prompt.strip()}"""
+                elif video_title:
+                    prompt = f"""You are analyzing a YouTube video titled: "{video_title}"
 
-Please provide a concise summary of the following transcript:
-
+Transcript:
 {text}
 
-Create a clear summary that captures the main points and key information."""
+User Question: {custom_prompt.strip()}"""
+                else:
+                    prompt = f"""Transcript:
+{text}
+
+User Question: {custom_prompt.strip()}"""
             else:
-                prompt = f"""Please provide a concise summary of the following transcript:
+                # Use default summarization prompts
+                if video_title and channel_name:
+                    prompt = f"""You are analyzing a YouTube video from the channel "{channel_name}" titled: "{video_title}"
+
+Please provide a concise summary of the following transcript:
+
+{text}
+
+Create a clear summary that captures the main points and key information."""
+                elif video_title:
+                    prompt = f"""You are analyzing a YouTube video titled: "{video_title}"
+
+Please provide a concise summary of the following transcript:
+
+{text}
+
+Create a clear summary that captures the main points and key information."""
+                else:
+                    prompt = f"""Please provide a concise summary of the following transcript:
 
 {text}
 
 Create a clear summary that captures the main points and key information."""
 
-            with st.spinner("Generating summary..."):
+            if custom_prompt and custom_prompt.strip():
+                spinner_text = "Answering your question..."
+            else:
+                spinner_text = "Generating summary..."
+
+            with st.spinner(spinner_text):
                 completion = client.chat.completions.create(
                     model="openai/gpt-oss-20b:free",
                     messages=[
@@ -272,6 +293,15 @@ def main():
         # Submit button - always enabled when form is submitted
         submitted = st.form_submit_button("Summarize", type="primary")
 
+    # Optional custom question input (outside form for better UX)
+    with st.expander("🤔 Ask a specific question (Optional)", expanded=False):
+        custom_prompt = st.text_input(
+            "",
+            placeholder="e.g., What are the main benefits? or Explain this concept...",
+            label_visibility="collapsed",
+            help="Leave empty for automatic summarization, or ask a specific question about the video content"
+        )
+
     # Process when form is submitted (either by button click or Enter key)
     if submitted and url:
         # Validate URL
@@ -301,9 +331,12 @@ def main():
             with st.expander("View full transcript"):
                 st.text_area("Full transcript", transcript, height=200, disabled=True, label_visibility="hidden")
 
-            # Step 2: Generate summary
-            status_text.text("Creating summary...")
-            summary = summarizer.summarize_text(transcript, video_title, channel_name)
+            # Step 2: Generate response
+            if custom_prompt and custom_prompt.strip():
+                status_text.text("Answering your question...")
+            else:
+                status_text.text("Creating summary...")
+            summary = summarizer.summarize_text(transcript, video_title, channel_name, custom_prompt)
 
             if not summary:
                 return
@@ -311,8 +344,11 @@ def main():
             progress_bar.progress(100)
             status_text.text("Complete!")
 
-            # Display results - focus on summary
-            st.markdown("### Summary")
+            # Display results - focus on summary or answer
+            if custom_prompt and custom_prompt.strip():
+                st.markdown("### Answer to Your Question")
+            else:
+                st.markdown("### Summary")
             st.markdown(f'<div class="success-message">{summary}</div>', unsafe_allow_html=True)
 
         except Exception as e:
@@ -322,14 +358,6 @@ def main():
             progress_bar.empty()
             status_text.empty()
 
-    # Minimal footer
-    st.markdown("---")
-    st.markdown(
-        "<div style='text-align: center; color: #999; font-size: 0.9rem;'>"
-        "Powered by AI"
-        "</div>",
-        unsafe_allow_html=True
-    )
 
 if __name__ == "__main__":
     main()
