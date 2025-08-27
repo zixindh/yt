@@ -78,6 +78,28 @@ st.markdown("""
     .stTextInput > div > div > input {
         border-radius: 6px;
     }
+
+    /* Mobile optimizations */
+    @media (max-width: 768px) {
+        .main-header {
+            font-size: 1.8rem;
+        }
+        .sub-header {
+            font-size: 0.9rem;
+        }
+        .stTextInput > div > div > input {
+            font-size: 16px; /* Prevents zoom on iOS */
+        }
+        .stButton > button {
+            font-size: 1rem;
+            padding: 0.75rem 2rem;
+        }
+    }
+
+    /* Form styling for better mobile keyboard handling */
+    .stForm {
+        margin-bottom: 1rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -286,18 +308,21 @@ def main():
     with st.form("url_form"):
         url = st.text_input(
             "YouTube URL",
-            placeholder="Paste your YouTube video link here...",
+            placeholder="Paste your YouTube video link here... (Press Enter to submit)",
             label_visibility="hidden"
         )
 
         # Submit button - always enabled when form is submitted
         submitted = st.form_submit_button("Summarize", type="primary")
 
+        # Mobile-friendly hint
+        st.caption("💡 **Tip:** Press Enter on your keyboard to submit (works on mobile too!)")
+
     # Optional custom question input (outside form for better UX)
     with st.expander("🤔 Ask a specific question (Optional)", expanded=False):
         custom_prompt = st.text_input(
             "",
-            placeholder="e.g., What are the main benefits? or Explain this concept...",
+            placeholder="e.g., What are the main benefits? or Explain this concept... (Press Enter to submit)",
             label_visibility="collapsed",
             help="Leave empty for automatic summarization, or ask a specific question about the video content"
         )
