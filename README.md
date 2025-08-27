@@ -1,15 +1,14 @@
 # 🎥 YouTube Video AI Summarizer
 
-A streamlined Streamlit application that automatically extracts YouTube video transcripts using Apify and generates intelligent summaries with speaker identification using Qwen Coder.
+A streamlined Streamlit application that automatically extracts YouTube video transcripts using Apify and generates intelligent summaries using OpenRouter AI.
 
 🎉 **Try it now:** [https://youtuberead.streamlit.app/](https://youtuberead.streamlit.app/)
 
 ## ✨ Features
 
 - **Simple & Fast**: Just paste a YouTube URL and get instant summaries
-- **AI-Powered**: Uses Qwen Coder for intelligent summarization with speaker identification
+- **AI-Powered**: Uses OpenRouter AI for intelligent summarization
 - **Channel Context**: Extracts video title and channel name for better context
-- **Speaker Identification**: AI identifies likely speakers based on channel and content
 - **Clean UI**: Beautiful, minimal interface focused on automatic processing
 - **No Manual Upload**: Fully automated - no file uploads needed
 
@@ -28,17 +27,13 @@ Just paste any YouTube URL and get instant summaries with speaker identification
 #### Prerequisites
 
 - Python 3.8+
-- Qwen Code CLI installed and accessible in PATH
+- API tokens for Apify and OpenRouter
 
 #### Installation
 
 1. **Clone the repository** (if applicable) or navigate to the project folder
 
-2. **Install Qwen Coder CLI**:
-   - Install Qwen Coder and ensure the `qwen` command is available in your PATH
-   - Make sure `qwen` is accessible from your command line
-
-3. **Install dependencies**:
+2. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
@@ -46,11 +41,19 @@ Just paste any YouTube URL and get instant summaries with speaker identification
    The `requirements.txt` includes:
    - `streamlit` - Web interface
    - `apify-client` - YouTube transcript extraction
+   - `openai` - OpenRouter API client
+   - `python-dotenv` - Environment variable management
 
-4. **Set up environment variables**:
-   - Copy `env-example.txt` to `.env`
-   - Get your Apify API token from: https://console.apify.com/account/integrations
-   - Set the token: `APIFY_API_TOKEN=your_token_here`
+3. **Set up environment variables**:
+   - Create a `.env` file in the project root
+   - Add your API tokens:
+     ```
+     APIFY_API_TOKEN=your_apify_token_here
+     OPENROUTER_API_KEY=your_openrouter_key_here
+     ```
+   - Get tokens from:
+     - **Apify**: https://console.apify.com/account/integrations
+     - **OpenRouter**: https://openrouter.ai/keys
 
 ### Running the Application
 
@@ -66,7 +69,7 @@ The application will open in your default web browser at `http://localhost:8501`
 1. **Open the app**: Visit [https://youtuberead.streamlit.app/](https://youtuberead.streamlit.app/)
 2. **Paste YouTube URL**: Copy and paste any YouTube video URL into the input field
 3. **Click Summarize**: Press the "Summarize" button
-4. **Get Results**: View the AI-generated summary with speaker identification
+4. **Get Results**: View the AI-generated summary
 
 ### Using Locally (Advanced)
 1. **Paste YouTube URL**: Copy and paste any YouTube video URL into the input field
@@ -74,8 +77,8 @@ The application will open in your default web browser at `http://localhost:8501`
 3. **Automatic Processing**: Watch the progress bar as the app:
    - Uses Apify to extract the video transcript, title, and channel name
    - Processes the transcript content for analysis
-   - Generates a summary using Qwen Coder with speaker identification
-4. **View Results**: Read the AI-generated summary with identified speakers and optionally view the full transcript
+   - Generates a summary using OpenRouter AI
+4. **View Results**: Read the AI-generated summary and optionally view the full transcript
 
 ## 🛠️ Technical Details
 
@@ -83,13 +86,14 @@ The application will open in your default web browser at `http://localhost:8501`
 
 - **Frontend**: Streamlit for responsive web UI
 - **Transcript Extraction**: Apify for automatic YouTube transcript and metadata retrieval
-- **AI Summarization**: Qwen Coder CLI assistant with speaker identification
+- **AI Summarization**: OpenRouter API with GPT-OSS-20B model
 - **Data Processing**: Direct text processing with channel and video context
 
 ### Tools Used
 
 - **Apify**: Cloud-based web scraping and data extraction service
-- **Qwen Coder CLI**: Free coding assistant for intelligent text summarization
+- **OpenRouter**: AI API service providing access to multiple AI models
+- **OpenAI Python Client**: For API communication with OpenRouter
 
 ### File Structure
 
@@ -97,24 +101,18 @@ The application will open in your default web browser at `http://localhost:8501`
 youtube-summarizer/
 ├── app.py                 # Main Streamlit application
 ├── requirements.txt       # Python dependencies
-├── packages.txt          # System dependencies for Streamlit Cloud
-├── runtime.txt           # Python version specification
-├── setup_qwen.sh         # Qwen Coder CLI installation script
-├── env-example.txt       # Environment variables template
 ├── context.md            # Project description
 ├── README.md             # This file
-├── test_apify_transcript.py # Test script for Apify integration
-└── .streamlit/           # Streamlit configuration
+└── .streamlit/           # Streamlit configuration (optional)
     └── config.toml       # Streamlit settings
 ```
 
 ## ⚠️ Important Notes
 
 - **Processing Time**: Fast transcript extraction and AI summarization
-- **Internet Required**: For Apify transcript extraction and Qwen Code API calls
-- **Qwen Code**: Must be installed and accessible in system PATH
-- **Apify API**: Requires Apify account and API token (set as environment variable)
-- **Environment Variables**: APIFY_API_TOKEN must be configured for the app to work
+- **Internet Required**: For Apify transcript extraction and OpenRouter API calls
+- **API Tokens**: Requires both Apify and OpenRouter API tokens
+- **Environment Variables**: Both APIFY_API_TOKEN and OPENROUTER_API_KEY must be configured
 - **Subtitle Availability**: Only works with videos that have subtitle tracks available
 
 ## 🔐 Environment Variables Setup
@@ -123,134 +121,143 @@ youtube-summarizer/
 
 1. **Create a `.env` file** in the project root:
    ```bash
-   cp env-example.txt .env
+   touch .env
    ```
 
-2. **Edit `.env` file** and add your Apify API token:
+2. **Edit `.env` file** and add your API tokens:
    ```
-   APIFY_API_TOKEN=your_actual_token_here
-   ```
-
-3. **Install python-dotenv** (optional, for automatic loading):
-   ```bash
-   pip install python-dotenv
+   APIFY_API_TOKEN=your_actual_apify_token_here
+   OPENROUTER_API_KEY=your_actual_openrouter_key_here
    ```
 
 ### For Streamlit Cloud Deployment
 
 1. **Go to your Streamlit app dashboard**
 2. **Navigate to Settings → Secrets**
-3. **Add the secret**:
+3. **Add the secrets**:
    ```
-   APIFY_API_TOKEN = "your_actual_token_here"
+   APIFY_API_TOKEN = "your_actual_apify_token_here"
+   OPENROUTER_API_KEY = "your_actual_openrouter_key_here"
    ```
 
 4. **Deploy automatically** - Streamlit Cloud will:
-   - Install system dependencies from `packages.txt`
-   - Run the setup script `setup_qwen.sh` to install Qwen Coder CLI
    - Install Python packages from `requirements.txt`
    - Start your app with the configured secrets
 
-### Getting Your Apify API Token
+### Getting Your API Tokens
 
+**Apify Token:**
 1. **Sign up/Login** to [Apify Console](https://console.apify.com/)
 2. **Go to Settings → Integrations**
 3. **Copy your API token**
-4. **Add it to your environment variables** as shown above
+
+**OpenRouter Token:**
+1. **Sign up/Login** to [OpenRouter](https://openrouter.ai/)
+2. **Go to Keys section**
+3. **Create a new API key**
+4. **Copy your API key**
 
 ## 🎯 Supported Content
 
 - YouTube videos with subtitle/caption tracks available
 - Automatic extraction of video title and channel name
-- Speaker identification based on channel and content context
 - Multiple languages (depending on subtitle availability)
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-1. **"Qwen Coder is not installed"**
-   - Install Qwen Coder and ensure the `qwen` command is available in your PATH
-   - Ensure `qwen` command is accessible from your terminal
-
-2. **"Apify actor failed to process the video"**
-   - Check your Apify API token configuration in the code
+1. **"Apify actor failed to process the video"**
+   - Check your Apify API token configuration
    - The video might not have subtitle tracks available on YouTube
    - Check your internet connection
 
-3. **"No transcript found in the video"**
+2. **"No transcript found in the video"**
    - The video might not have subtitle tracks available
    - Check if the video has captions enabled (CC button)
    - Try a different video with available subtitles
 
-4. **"Qwen Code timeout"**
-   - The transcript text might be too long for processing
-   - Try with shorter videos or shorter transcripts
+3. **"OpenRouter API key not found"**
+   - Set the OPENROUTER_API_KEY environment variable
+   - For local: Add it to your `.env` file
+   - For Streamlit Cloud: Add secret in app settings
+   - Get token from: https://openrouter.ai/keys
+
+4. **"Apify API token not found"**
+   - Set the APIFY_API_TOKEN environment variable
+   - For local: Add it to your `.env` file
+   - For Streamlit Cloud: Add secret in app settings
+   - Get token from: https://console.apify.com/account/integrations
 
 5. **"Module 'apify_client' not found"**
    - Install the apify-client package: `pip install apify-client`
    - Make sure you're using the correct Python environment
 
-6. **"Apify API token not found"**
-   - Set the APIFY_API_TOKEN environment variable
-   - For local: Create `.env` file with your token
-   - For Streamlit Cloud: Add secret in app settings
-   - Get token from: https://console.apify.com/account/integrations
+6. **"Module 'openai' not found"**
+   - Install the openai package: `pip install openai`
+   - Make sure you're using the correct Python environment
 
 ### Getting Help
 
 If you encounter issues:
 1. Check the terminal output for detailed error messages
 2. Ensure all dependencies are properly installed
-3. Verify Qwen Coder CLI installation and PATH accessibility
-4. Verify FFmpeg installation
-5. Check available disk space and RAM
+3. Verify both API tokens are correctly configured
+4. Check available disk space and RAM
 
 ## 🔧 Customization
 
-### Changing Whisper Models
+### Changing AI Models
 
-To use different Whisper model sizes, modify the model loading in `app.py`:
+To use different AI models, modify the model name in the `summarize_text` function in `app.py`:
 
 ```python
-# For faster processing (less accurate)
-self.whisper_model = whisper.load_model("tiny")
+# Current model
+model="openai/gpt-oss-20b:free"
 
-# For higher accuracy (slower, more memory)
-self.whisper_model = whisper.load_model("large")
+# Other available models on OpenRouter
+model="anthropic/claude-3-haiku:beta"
+model="meta-llama/llama-3-8b-instruct"
 ```
 
-### Qwen Code Parameters
+### Adjusting Prompts
 
-To customize Qwen Code behavior, modify the summarization function in `app.py`:
-
-```python
-# Adjust these parameters in the subprocess.run call
-'--max-tokens', '512',     # Maximum length of summary
-'--temperature', '0.7'     # Creativity level (0.0-1.0)
-```
-
-### Contextual Prompts
-
-The app automatically includes the video title as context when generating summaries, which helps Qwen Code produce more relevant and accurate summaries. The prompt structure is:
+The app automatically includes video context when generating summaries. You can customize the prompt structure by modifying the prompt templates in `app.py`:
 
 ```python
+# Customize the prompt format
 prompt = f"""You are analyzing a YouTube video titled: "{video_title}"
 
-Please provide a concise summary of the following transcript from this video:
+Please provide a concise summary of the following transcript:
 
 {transcript}
 
-Create a clear, comprehensive summary that captures the main points, key information, and context from the video title."""
+Create a clear summary that captures the main points."""
+```
+
+### API Configuration
+
+You can adjust the OpenRouter client configuration in `app.py`:
+
+```python
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=api_key,
+    # Add additional headers if needed
+    default_headers={
+        "HTTP-Referer": "https://your-app-url.com",
+        "X-Title": "YouTube Summarizer",
+    }
+)
 ```
 
 ## 📄 License
 
 This project is open source. Please check individual tool licenses:
-- OpenAI Whisper: MIT License
-- Qwen Coder: Free to use (check Qwen Coder license)
-- yt-dlp: Unlicense
 - Streamlit: Apache 2.0 License
+- Apify Client: Apache 2.0 License
+- OpenAI Python Client: MIT License
+- OpenRouter: Check their terms of service
 
 ## 🤝 Contributing
 

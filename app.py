@@ -4,6 +4,7 @@ import tempfile
 import subprocess
 import re
 from apify_client import ApifyClient
+from openai import OpenAI
 
 # Load environment variables from .env file if it exists (for local development)
 try:
@@ -153,100 +154,60 @@ class YouTubeSummarizer:
             return "YouTube Video"
 
     def summarize_text(self, text, video_title=None, channel_name=None):
-        """Summarize text using Qwen Coder CLI"""
+        """Summarize text using OpenRouter API"""
         try:
-            # Create a temporary file with the transcript
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as temp_file:
-                temp_file.write(text)
-                temp_file_path = temp_file.name
+            # Get API key from environment
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            if not api_key:
+                st.error("❌ OpenRouter API key not found. Please set the OPENROUTER_API_KEY environment variable.")
+                return None
 
-            # Prepare the prompt for Qwen Code with video title and channel context
+            # Initialize OpenRouter client
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=api_key,
+            )
+
+            # Prepare the prompt
             if video_title and channel_name:
                 prompt = f"""You are analyzing a YouTube video from the channel "{channel_name}" titled: "{video_title}"
 
-Please provide a very concise summary of the following transcript from this video. Based on your knowledge of the channel and content, identify the likely speaker(s) and include this information in your summary:
+Please provide a concise summary of the following transcript:
 
 {text}
 
-Create a clear, comprehensive summary that captures the main points, key information, context from the video title, and identifies the speaker(s) where possible."""
+Create a clear summary that captures the main points and key information."""
             elif video_title:
                 prompt = f"""You are analyzing a YouTube video titled: "{video_title}"
 
-Please provide a very concise summary of the following transcript from this video. Based on the content and context, try to identify the likely speaker(s):
+Please provide a concise summary of the following transcript:
 
 {text}
 
-Create a clear, comprehensive summary that captures the main points, key information, context from the video title, and identifies the speaker(s) where possible."""
+Create a clear summary that captures the main points and key information."""
             else:
-                prompt = f"""Please provide a very concise summary of the following transcript. Based on the content, try to identify the likely speaker(s):
+                prompt = f"""Please provide a concise summary of the following transcript:
 
 {text}
 
-Create a clear, very concise, comprehensive summary that captures the main points and key information, including speaker identification where possible."""
+Create a clear summary that captures the main points and key information."""
 
-            with st.spinner("Generating summary with Qwen Coder..."):
-                # Call Qwen Coder CLI with the prompt
-                result = subprocess.run([
-                    'qwen-code',
-                    '--prompt', prompt
-                ], capture_output=True, text=True, encoding='utf-8', timeout=120)
+            with st.spinner("Generating summary..."):
+                completion = client.chat.completions.create(
+                    model="openai/gpt-oss-20b:free",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
 
-                if result.returncode != 0:
-                    error_msg = f"AI processing failed with return code {result.returncode}"
-                    if result.stderr:
-                        error_msg += f"\nError details: {result.stderr.strip()}"
-                    st.error(f"⚠️ {error_msg}")
-                    return None
-
-                # Clean the output to remove system messages and keep only the actual summary
-                raw_output = result.stdout.strip()
-
-                # Remove common system messages from Qwen CLI output
-                system_messages = [
-                    "Loaded cached Qwen credentials.",
-                    "Loading Qwen model...",
-                    "Processing request...",
-                    "Generating response...",
-                    "Qwen Coder",
-                    "qwen-code",
-                    "Node.js",
-                    "npm"
-                ]
-
-                # Split output into lines and filter out system messages
-                lines = raw_output.split('\n')
-                cleaned_lines = []
-
-                for line in lines:
-                    line = line.strip()
-                    # Skip empty lines
-                    if not line:
-                        continue
-                    # Skip system messages (case-insensitive)
-                    if any(msg.lower() in line.lower() for msg in system_messages):
-                        continue
-                    # Skip lines that look like debug output (contain file paths, version info, etc.)
-                    if any(char in line for char in ['[', ']', '{', '}', 'C:\\', '/usr/', 'node_modules']):
-                        continue
-                    # Keep the line if it looks like actual summary content
-                    cleaned_lines.append(line)
-
-                # Join the cleaned lines back together
-                summary = '\n'.join(cleaned_lines).strip()
-
-                # Clean up the temporary file
-                try:
-                    os.unlink(temp_file_path)
-                except:
-                    pass
-
+                summary = completion.choices[0].message.content.strip()
                 return summary if summary else "Summary could not be generated."
 
-        except subprocess.TimeoutExpired:
-            st.error("⚠️ Processing took too long. Please try with a shorter video.")
-            return None
         except Exception as e:
-            st.error("⚠️ AI processing failed. Please try again.")
+            st.error(f"❌ Error generating summary: {str(e)}")
             return None
 
 
