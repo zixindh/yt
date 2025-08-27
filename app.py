@@ -6,6 +6,9 @@ import re
 from apify_client import ApifyClient
 from openai import OpenAI
 
+import streamlit.components.v1 as components
+import markdown
+
 # Load environment variables from .env file if it exists (for local development)
 try:
     from dotenv import load_dotenv
@@ -237,7 +240,7 @@ Create a clear summary that captures the main points and key information."""
 
             with st.spinner(spinner_text):
                 completion = client.chat.completions.create(
-                    model="openai/gpt-oss-20b:free",
+                    model="deepseek/deepseek-r1-0528:free",
                     messages=[
                         {
                             "role": "user",
@@ -245,6 +248,10 @@ Create a clear summary that captures the main points and key information."""
                         }
                     ]
                 )
+
+                if not completion or not completion.choices:
+                    st.error("❌ The AI model did not return a valid response. This could be due to high demand or an invalid request. Please try again later.")
+                    return None
 
                 summary = completion.choices[0].message.content.strip()
                 return summary if summary else "Summary could not be generated."
@@ -362,6 +369,8 @@ def main():
             if not summary:
                 return
 
+            summary_html = markdown.markdown(summary)
+
             progress_bar.progress(100)
             status_text.text("Complete!")
 
@@ -370,7 +379,23 @@ def main():
                 st.markdown("### Answer to Your Question")
             else:
                 st.markdown("### Summary")
-            st.markdown(f'<div class="success-message">{summary}</div>', unsafe_allow_html=True)
+
+            html_content = f"""
+<div style="position: relative;">
+<div class="success-message" id="summary-text" style="padding-right: 40px;">
+{summary_html}
+</div>
+<button style="position: absolute; top: 5px; right: 10px; background: none; border: none; cursor: pointer; opacity: 0.7;" onclick="navigator.clipboard.writeText(document.getElementById(\'summary-text\').textContent)">
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+<path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1z"/>
+</svg>
+</button>
+</div>
+            """
+            # Improved height estimation: base + lines * line height
+            num_lines = summary.count('\n') + 1
+            estimated_height = 150 + num_lines * 25
+            components.html(html_content, height=estimated_height, scrolling=False)
 
         except Exception as e:
             st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)
