@@ -295,37 +295,33 @@ Create a clear summary that captures the main points and key information."""
             return None, "YouTube Video", "Unknown Channel"
 
 def main():
-    st.markdown('<div class="main-header">YouTube Video Summarizer</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Get quick summaries from YouTube videos</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">YouTube Summarizer</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">AI-powered video summaries</div>', unsafe_allow_html=True)
 
     # Initialize the summarizer
     summarizer = YouTubeSummarizer()
 
     # Input section with form for better UX
-    st.markdown("### Enter YouTube URL")
+    st.markdown("### YouTube URL")
 
     # Create a form to handle Enter key and button clicks
     with st.form("url_form"):
         url = st.text_input(
             "YouTube URL",
-            placeholder="Paste your YouTube video link here... (Press Enter to submit)",
+            placeholder="Paste your YouTube video link here...",
             label_visibility="hidden"
         )
 
+        # Optional custom question input (inside form for Enter key support)
+        with st.expander("Ask a question (Optional)", expanded=False):
+            custom_prompt = st.text_input(
+                "",
+                placeholder="e.g., What are the main benefits?",
+                label_visibility="collapsed"
+            )
+
         # Submit button - always enabled when form is submitted
         submitted = st.form_submit_button("Summarize", type="primary")
-
-        # Mobile-friendly hint
-        st.caption("💡 **Tip:** Press Enter on your keyboard to submit (works on mobile too!)")
-
-    # Optional custom question input (outside form for better UX)
-    with st.expander("🤔 Ask a specific question (Optional)", expanded=False):
-        custom_prompt = st.text_input(
-            "",
-            placeholder="e.g., What are the main benefits? or Explain this concept... (Press Enter to submit)",
-            label_visibility="collapsed",
-            help="Leave empty for automatic summarization, or ask a specific question about the video content"
-        )
 
     # Process when form is submitted (either by button click or Enter key)
     if submitted and url:
