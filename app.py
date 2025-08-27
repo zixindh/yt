@@ -52,6 +52,45 @@ st.markdown("""
         font-size: 1rem;
         font-family: -apple-system, BlinkMacSystemFont, sans-serif;
     }
+
+    .success-message table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1rem 0;
+        border: 1px solid #e9ecef;
+    }
+
+    .success-message th,
+    .success-message td {
+        border: 1px solid #e9ecef;
+        padding: 0.75rem;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    .success-message th {
+        background-color: #f1f3f5;
+        font-weight: 600;
+    }
+
+    .success-message tr:nth-child(even) {
+        background-color: #f8f9fa;
+    }
+
+    .success-message code {
+        background-color: #e9ecef;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+
+    .success-message pre {
+        background-color: #e9ecef;
+        padding: 1rem;
+        border-radius: 4px;
+        overflow-x: auto;
+    }
+
     .error-message {
         background-color: #fff5f5;
         border: 1px solid #fed7d7;
@@ -369,7 +408,7 @@ def main():
             if not summary:
                 return
 
-            summary_html = markdown.markdown(summary)
+            summary_html = markdown.markdown(summary, extensions=['tables'])
 
             progress_bar.progress(100)
             status_text.text("Complete!")
@@ -394,7 +433,7 @@ def main():
             """
             # Improved height estimation: base + lines * line height
             num_lines = summary.count('\n') + 1
-            estimated_height = 150 + num_lines * 25
+            estimated_height = 300 + num_lines * 30
             components.html(html_content, height=estimated_height, scrolling=False)
 
         except Exception as e:
