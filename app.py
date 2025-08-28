@@ -394,7 +394,7 @@ def main():
         # Optional custom question input (inside form for Enter key support)
         with st.expander("Ask a question (Optional)", expanded=False):
             custom_prompt = st.text_input(
-                "",
+                "Custom Question",
                 placeholder="e.g., What are the main benefits?",
                 label_visibility="collapsed"
             )
@@ -457,16 +457,30 @@ def main():
 <div class="success-message" id="summary-text" style="padding-right: 40px;">
 {summary_html}
 </div>
-<button style="position: absolute; top: 5px; right: 10px; background: none; border: none; cursor: pointer; opacity: 0.7;" onclick="navigator.clipboard.writeText(document.getElementById(\'summary-text\').textContent)">
+<button style="position: absolute; top: 5px; right: 10px; background: none; border: none; cursor: pointer; opacity: 0.7;" onclick="copySummary()">
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
 <path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1z"/>
 </svg>
 </button>
 </div>
+<script>
+function copySummary() {{
+    var element = document.getElementById('summary-text');
+    var text = element.innerText || element.textContent || '';
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+}}
+</script>
             """
             # Improved height estimation: base + lines * line height
             num_lines = summary.count('\n') + 1
-            estimated_height = 300 + num_lines * 30
+            estimated_height = 600 + num_lines * 30
             components.html(html_content, height=estimated_height, scrolling=False)
 
         except Exception as e:
