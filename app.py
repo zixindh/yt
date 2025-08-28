@@ -84,6 +84,27 @@ st.markdown("""
         .success-message pre {
             background-color: #3a3a3c;
         }
+
+        .success-message p,
+        .success-message h1,
+        .success-message h2,
+        .success-message h3,
+        .success-message h4,
+        .success-message h5,
+        .success-message h6,
+        .success-message li,
+        .success-message div {
+            color: #e0e0e0 !important;
+        }
+
+        .success-message a {
+            color: #4dabf7 !important;
+        }
+
+        .success-message strong,
+        .success-message b {
+            color: #ffffff !important;
+        }
     }
 
     .success-message table {
