@@ -501,7 +501,7 @@ function copySummary() {{
             """
             # Improved height estimation: base + lines * line height
             num_lines = summary.count('\n') + 1
-            estimated_height = 600 + num_lines * 30
+            estimated_height = 1600 + num_lines * 30
             components.html(html_content, height=estimated_height, scrolling=False)
 
         except Exception as e:
