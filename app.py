@@ -1,20 +1,17 @@
 import streamlit as st
 import os
-import tempfile
-import subprocess
 import re
 from apify_client import ApifyClient
 from openai import OpenAI
-
 import streamlit.components.v1 as components
 import markdown
 
-# Load environment variables from .env file if it exists (for local development)
+# Load environment variables from .env file if it exists
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
-    pass  # dotenv not installed, will use system environment variables
+    pass
 
 # Page configuration
 st.set_page_config(
@@ -26,28 +23,13 @@ st.set_page_config(
 # Custom CSS for minimalistic design
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 2.2rem;
-        font-weight: 600;
-        text-align: center;
-        color: #333;
-        margin-bottom: 0.5rem;
-        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-    .sub-header {
-        font-size: 1.1rem;
-        text-align: center;
-        color: #666;
-        margin-bottom: 2rem;
-        font-weight: 400;
-    }
     .success-message {
         background-color: #f8f9fa;
         border: 1px solid #e9ecef;
         color: #495057;
-        padding: 1.5rem;
-        border-radius: 8px;
-        margin: 1.5rem 0;
+        padding: 1rem;
+        border-radius: 6px;
+        margin: 0.5rem 0 0 0;
         line-height: 1.6;
         font-size: 1rem;
         font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -105,6 +87,8 @@ st.markdown("""
         .success-message b {
             color: #ffffff !important;
         }
+
+
     }
 
     .success-message table {
@@ -177,12 +161,6 @@ st.markdown("""
 
     /* Mobile optimizations */
     @media (max-width: 768px) {
-        .main-header {
-            font-size: 1.8rem;
-        }
-        .sub-header {
-            font-size: 0.9rem;
-        }
         .stTextInput > div > div > input {
             font-size: 16px; /* Prevents zoom on iOS */
         }
@@ -194,16 +172,36 @@ st.markdown("""
 
     /* Form styling for better mobile keyboard handling */
     .stForm {
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Custom check mark button styling */
+    .stForm button[data-testid="stFormSubmitButton"] {
+        width: auto !important;
+        height: auto !important;
+        padding: 0.2rem !important;
+        font-size: 20px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        min-height: 40px !important; /* Match typical input field height */
+    }
+
+    /* Ensure the form columns are properly aligned */
+    .stForm .row-widget {
+        align-items: stretch !important; /* Stretch to match heights */
+    }
+
+    /* Better alignment for the columns container */
+    .stForm [data-testid="column"] {
+        display: flex !important;
+        align-items: center !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-class YouTubeSummarizer:
-    def __init__(self):
-        pass
-
-    def extract_transcript_apify(self, youtube_url):
+def extract_transcript_apify(youtube_url):
         """Extract transcript, video title, and channel name from YouTube video using Apify"""
         try:
             # Initialize the ApifyClient with API token from environment variable
@@ -256,15 +254,8 @@ class YouTubeSummarizer:
             st.error(f"❌ Error extracting transcript: {str(e)}")
             return None, "YouTube Video", "Unknown Channel"
 
-    def get_video_title_from_url(self, youtube_url):
-        """Extract video title from YouTube URL (simplified approach)"""
-        try:
-            # For now, return a generic title - could be enhanced later
-            return "YouTube Video"
-        except:
-            return "YouTube Video"
 
-    def summarize_text(self, text, video_title=None, channel_name=None, custom_prompt=None):
+def summarize_text(text, video_title=None, channel_name=None, custom_prompt=None):
         """Summarize text using OpenRouter API"""
         try:
             # Get API key from environment
@@ -355,125 +346,87 @@ Create a clear summary that captures the main points and key information."""
 
 
 
-    def parse_transcript_file(self, transcript_file_path):
-        """Parse transcript file and extract clean text"""
-        try:
-            with open(transcript_file_path, 'r', encoding='utf-8') as file:
-                content = file.read()
 
-            # Clean up the transcript text
-            transcript = re.sub(r'\s+', ' ', content).strip()
 
-            return transcript if transcript else None
+def extract_transcript_and_title(youtube_url):
+    """Extract transcript from YouTube video using Apify and get video title and channel"""
+    try:
+        # Extract transcript, title, and channel using Apify
+        result = extract_transcript_apify(youtube_url)
+        if not result or not result[0]:
+            video_title = result[1] if result and len(result) > 1 else "YouTube Video"
+            channel_name = result[2] if result and len(result) > 2 else "Unknown Channel"
+            return None, video_title, channel_name
 
-        except Exception as e:
-            st.error(f"❌ Error parsing transcript file: {str(e)}")
-            return None
+        transcript_text, video_title, channel_name = result
 
-    def extract_transcript_and_title(self, youtube_url):
-        """Extract transcript from YouTube video using Apify and get video title and channel"""
-        try:
-            # Extract transcript, title, and channel using Apify
-            result = self.extract_transcript_apify(youtube_url)
-            if not result or not result[0]:
-                video_title = result[1] if result and len(result) > 1 else "YouTube Video"
-                channel_name = result[2] if result and len(result) > 2 else "Unknown Channel"
-                return None, video_title, channel_name
+        # Clean up the transcript text (remove extra whitespace)
+        transcript = re.sub(r'\s+', ' ', transcript_text).strip()
 
-            transcript_text, video_title, channel_name = result
+        if not transcript:
+            return None, video_title, channel_name
 
-            # Clean up the transcript text (remove extra whitespace)
-            transcript = re.sub(r'\s+', ' ', transcript_text).strip()
+        return transcript, video_title, channel_name
 
-            if not transcript:
-                return None, video_title, channel_name
-
-            return transcript, video_title, channel_name
-
-        except Exception as e:
-            st.error(f"❌ Error processing video: {str(e)}")
-            return None, "YouTube Video", "Unknown Channel"
+    except Exception as e:
+        st.error(f"❌ Error processing video: {str(e)}")
+        return None, "YouTube Video", "Unknown Channel"
 
 def main():
-    st.markdown('<div class="main-header">YouTube Summarizer</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">AI-powered video summaries</div>', unsafe_allow_html=True)
+    # Initialize session state for persisting summary
+    if 'summary_data' not in st.session_state:
+        st.session_state.summary_data = None
+    if 'current_url' not in st.session_state:
+        st.session_state.current_url = ""
+    if 'current_question' not in st.session_state:
+        st.session_state.current_question = ""
 
-    # Initialize the summarizer
-    summarizer = YouTubeSummarizer()
-
-    # Input section with form for better UX
-    st.markdown("### YouTube URL")
-
-    # Create a form to handle Enter key and button clicks
+    # Create a form to handle Enter key and button clicks (at the top)
     with st.form("url_form"):
-        url = st.text_input(
-            "YouTube URL",
-            placeholder="Paste your YouTube video link here...",
-            label_visibility="hidden"
-        )
+        # Create columns for URL input and button in the same row
+        col1, col2 = st.columns([6, 1])
+
+        with col1:
+            url = st.text_input(
+                "YouTube URL",
+                placeholder="insert youtube link for AI analysis...",
+                label_visibility="hidden",
+                value=st.session_state.current_url
+            )
+
+        with col2:
+            # Check mark button aligned with URL input
+            submitted = st.form_submit_button("✓", type="primary", help="Summarize")
 
         # Optional custom question input (inside form for Enter key support)
         with st.expander("Ask a question (Optional)", expanded=False):
             custom_prompt = st.text_input(
                 "Custom Question",
-                placeholder="e.g., What are the main benefits?",
-                label_visibility="collapsed"
+                placeholder="e.g., What are the customer feedbacks?",
+                label_visibility="collapsed",
+                key="custom_question_input",
+                value=st.session_state.current_question
             )
 
-        # Submit button - always enabled when form is submitted
-        submitted = st.form_submit_button("Summarize", type="primary")
 
-    # Process when form is submitted (either by button click or Enter key)
-    if submitted and url:
-        # Validate URL
-        if "youtube.com" not in url and "youtu.be" not in url:
-            st.error("⚠️ Please enter a valid YouTube URL")
-            return
 
-        # Progress bar
-        progress_bar = st.progress(0)
-        status_text = st.empty()
+    # Display summary below the form if available
+    if st.session_state.summary_data:
 
-        try:
-            # Step 1: Download subtitles and extract transcript
-            status_text.text("Extracting transcript...")
-            progress_bar.progress(25)
+        summary_data = st.session_state.summary_data
+        summary_html = summary_data['html']
+        summary_text = summary_data['text']
+        custom_prompt = summary_data.get('question', '')
+        num_lines = summary_text.count('\n') + 1
 
-            result = summarizer.extract_transcript_and_title(url)
+        # Display results header
+        if custom_prompt and custom_prompt.strip():
+            st.markdown("### Answer to Your Question")
+        else:
+            st.markdown("### Summary")
 
-            if not result or not result[0]:
-                return
-
-            transcript, video_title, channel_name = result
-
-            progress_bar.progress(60)
-
-            # Display transcript (secondary)
-            with st.expander("View full transcript"):
-                st.text_area("Full transcript", transcript, height=200, disabled=True, label_visibility="hidden")
-
-            # Step 2: Generate response
-            if custom_prompt and custom_prompt.strip():
-                status_text.text("Answering your question...")
-            else:
-                status_text.text("Creating summary...")
-            summary = summarizer.summarize_text(transcript, video_title, channel_name, custom_prompt)
-
-            if not summary:
-                return
-
-            summary_html = markdown.markdown(summary, extensions=['tables'])
-
-            progress_bar.progress(100)
-            status_text.text("Complete!")
-
-            # Display results - focus on summary or answer
-            if custom_prompt and custom_prompt.strip():
-                st.markdown("### Answer to Your Question")
-            else:
-                st.markdown("### Summary")
-
-            html_content = f"""
+        # Summary output with copy button
+        html_content = f"""
 <div style="position: relative;">
 <div class="success-message" id="summary-text" style="padding-right: 40px;">
 {summary_html}
@@ -498,11 +451,75 @@ function copySummary() {{
     document.body.removeChild(textarea);
 }}
 </script>
-            """
-            # Improved height estimation: base + lines * line height
-            num_lines = summary.count('\n') + 1
-            estimated_height = 1600 + num_lines * 30
-            components.html(html_content, height=estimated_height, scrolling=False)
+        """
+        estimated_height = 800 + num_lines * 30
+        components.html(html_content, height=estimated_height, scrolling=False)
+
+    # Process when form is submitted (either by button click or Enter key)
+    if submitted:
+        # Store current values in session state
+        st.session_state.current_url = url or ""
+        st.session_state.current_question = custom_prompt or ""
+
+        # Get the custom prompt from session state (since it's not available outside form scope)
+        current_custom_prompt = st.session_state.current_question
+
+        # Use stored URL if no new URL provided
+        if not url and st.session_state.current_url:
+            url = st.session_state.current_url
+
+        # Validate URL
+        if not url or ("youtube.com" not in url and "youtu.be" not in url):
+            st.error("⚠️ Please enter a valid YouTube URL")
+            return
+
+        # Progress bar
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+
+        try:
+            # Step 1: Download subtitles and extract transcript
+            status_text.text("Extracting transcript...")
+            progress_bar.progress(25)
+
+            result = extract_transcript_and_title(url)
+
+            if not result or not result[0]:
+                return
+
+            transcript, video_title, channel_name = result
+
+            progress_bar.progress(60)
+
+            # Display transcript (secondary)
+            with st.expander("View full transcript"):
+                st.text_area("Full transcript", transcript, height=200, disabled=True, label_visibility="hidden")
+
+            # Step 2: Generate response
+            if current_custom_prompt and current_custom_prompt.strip():
+                status_text.text("Answering your question...")
+            else:
+                status_text.text("Creating summary...")
+            summary = summarize_text(transcript, video_title, channel_name, current_custom_prompt)
+
+            if not summary:
+                return
+
+            summary_html = markdown.markdown(summary, extensions=['tables'])
+
+            progress_bar.progress(100)
+            status_text.text("Complete!")
+
+            # Store summary data in session state
+            st.session_state.summary_data = {
+                'html': summary_html,
+                'text': summary,
+                'question': current_custom_prompt if current_custom_prompt and current_custom_prompt.strip() else ''
+            }
+            st.session_state.current_url = url
+
+            # Rerun to display the summary at the top
+            st.rerun()
 
         except Exception as e:
             st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)
