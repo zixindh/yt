@@ -1,6 +1,8 @@
 import streamlit as st
 import os
 import re
+import requests
+from typing import List
 from apify_client import ApifyClient
 from openai import OpenAI
 import streamlit.components.v1 as components
@@ -201,6 +203,39 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def fetch_openrouter_models(api_key: str) -> List[str]:
+    """Fetch free/low-cost models from OpenRouter API for Google, DeepSeek, and Qwen vendors"""
+    url = "https://openrouter.ai/api/v1/models"
+    headers = {"Authorization": f"Bearer {api_key}"}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        data = response.json()
+        vendors = ["google", "deepseek", "qwen"]  # Gemini (google), Deepseek, Qwen (includes Qwen3 variants)
+
+        # First try to get completely free models
+        free_models = [
+            model["id"] for model in data["data"]
+            if any(vendor in model["id"].lower() for vendor in vendors)
+            and model.get("pricing", {}).get("prompt") == "0"
+            and model.get("pricing", {}).get("completion") == "0"
+        ]
+
+        # If no free models, include very low-cost models (under $0.001 per token)
+        if not free_models:
+            low_cost_models = [
+                model["id"] for model in data["data"]
+                if any(vendor in model["id"].lower() for vendor in vendors)
+                and model.get("pricing", {}).get("prompt", "0") != "0"
+                and model.get("pricing", {}).get("completion", "0") != "0"
+                and float(model.get("pricing", {}).get("prompt", "0") or "0") < 0.001
+                and float(model.get("pricing", {}).get("completion", "0") or "0") < 0.001
+            ]
+            return low_cost_models
+
+        return free_models
+    return []
+
 def extract_transcript_apify(youtube_url):
         """Extract transcript, video title, and channel name from YouTube video using Apify"""
         try:
@@ -227,6 +262,7 @@ def extract_transcript_apify(youtube_url):
             transcript_text = ""
             video_title = None
             channel_name = None
+            video_date = None
 
             for item in client.dataset(run["defaultDatasetId"]).iterate_items():
                 # Extract video title if available
@@ -237,6 +273,10 @@ def extract_transcript_apify(youtube_url):
                 if 'channelName' in item and item['channelName']:
                     channel_name = item['channelName']
 
+                # Extract video date if available
+                if 'videoDate' in item and item['videoDate']:
+                    video_date = item['videoDate']
+
                 # Extract transcript content
                 if 'transcript' in item and item['transcript']:
                     transcript_text += item['transcript'] + "\n"
@@ -245,17 +285,17 @@ def extract_transcript_apify(youtube_url):
 
             if not transcript_text.strip():
                 st.error("❌ No transcript found in the video.")
-                return None, video_title or "YouTube Video", channel_name or "Unknown Channel"
+                return None, video_title or "YouTube Video", channel_name or "Unknown Channel", video_date
 
-            return transcript_text, video_title or "YouTube Video", channel_name or "Unknown Channel"
+            return transcript_text, video_title or "YouTube Video", channel_name or "Unknown Channel", video_date
 
 
         except Exception as e:
             st.error(f"❌ Error extracting transcript: {str(e)}")
-            return None, "YouTube Video", "Unknown Channel"
+            return None, "YouTube Video", "Unknown Channel", None
 
 
-def summarize_text(text, video_title=None, channel_name=None, custom_prompt=None):
+def summarize_text(text, model="deepseek/deepseek-r1-0528:free", video_title=None, channel_name=None, video_date=None, custom_prompt=None):
         """Summarize text using OpenRouter API"""
         try:
             # Get API key from environment
@@ -324,7 +364,7 @@ Create a clear summary that captures the main points and key information."""
 
             with st.spinner(spinner_text):
                 completion = client.chat.completions.create(
-                    model="deepseek/deepseek-r1-0528:free",
+                    model=model,
                     messages=[
                         {
                             "role": "user",
@@ -341,7 +381,30 @@ Create a clear summary that captures the main points and key information."""
                 return summary if summary else "Summary could not be generated."
 
         except Exception as e:
-            st.error(f"❌ Error generating summary: {str(e)}")
+            error_str = str(e)
+            if "404" in error_str and "data policy" in error_str.lower():
+                st.warning("⚠️ Selected model has data policy restrictions. Automatically switching to a known working model...")
+                # Try with the default working model
+                try:
+                    client = OpenAI(
+                        base_url="https://openrouter.ai/api/v1",
+                        api_key=api_key,
+                    )
+                    completion = client.chat.completions.create(
+                        model="deepseek/deepseek-r1-0528:free",
+                        messages=[{"role": "user", "content": prompt}]
+                    )
+                    if completion and completion.choices:
+                        summary = completion.choices[0].message.content.strip()
+                        st.success("✅ Switched to working model successfully!")
+                        return summary if summary else "Summary could not be generated."
+                except Exception as fallback_e:
+                    st.error(f"❌ Both selected model and fallback model failed. Please try again later or select a different model.")
+                    return None
+            elif "404" in error_str:
+                st.error("❌ Model not found or not available. Please try selecting a different model.")
+            else:
+                st.error(f"❌ Error generating summary: {error_str}")
             return None
 
 
@@ -351,26 +414,27 @@ Create a clear summary that captures the main points and key information."""
 def extract_transcript_and_title(youtube_url):
     """Extract transcript from YouTube video using Apify and get video title and channel"""
     try:
-        # Extract transcript, title, and channel using Apify
+        # Extract transcript, title, channel, and date using Apify
         result = extract_transcript_apify(youtube_url)
         if not result or not result[0]:
             video_title = result[1] if result and len(result) > 1 else "YouTube Video"
             channel_name = result[2] if result and len(result) > 2 else "Unknown Channel"
-            return None, video_title, channel_name
+            video_date = result[3] if result and len(result) > 3 else None
+            return None, video_title, channel_name, video_date
 
-        transcript_text, video_title, channel_name = result
+        transcript_text, video_title, channel_name, video_date = result
 
         # Clean up the transcript text (remove extra whitespace)
         transcript = re.sub(r'\s+', ' ', transcript_text).strip()
 
         if not transcript:
-            return None, video_title, channel_name
+            return None, video_title, channel_name, video_date
 
-        return transcript, video_title, channel_name
+        return transcript, video_title, channel_name, video_date
 
     except Exception as e:
         st.error(f"❌ Error processing video: {str(e)}")
-        return None, "YouTube Video", "Unknown Channel"
+        return None, "YouTube Video", "Unknown Channel", None
 
 def main():
     # Initialize session state for persisting summary
@@ -380,6 +444,8 @@ def main():
         st.session_state.current_url = ""
     if 'current_question' not in st.session_state:
         st.session_state.current_question = ""
+    if 'selected_model' not in st.session_state:
+        st.session_state.selected_model = "deepseek/deepseek-r1-0528:free"  # Default to known working model
 
     # Create a form to handle Enter key and button clicks (at the top)
     with st.form("url_form"):
@@ -397,6 +463,23 @@ def main():
         with col2:
             # Check mark button aligned with URL input
             submitted = st.form_submit_button("✓", type="primary", help="Summarize")
+
+        # Model selection
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if api_key:
+            models = fetch_openrouter_models(api_key)
+            if models:
+                selected_model = st.selectbox(
+                    "AI Model",
+                    models,
+                    index=models.index(st.session_state.selected_model) if st.session_state.selected_model in models else 0,
+                    help="Select an AI model for analysis. Some free models may have data policy restrictions - if one fails, the app will automatically try a known working model."
+                )
+                st.session_state.selected_model = selected_model
+            else:
+                st.warning("No free or low-cost models available from selected vendors. Using default model.")
+        else:
+            st.warning("OpenRouter API key not found. Using default model.")
 
         # Optional custom question input (inside form for Enter key support)
         with st.expander("Ask a question (Optional)", expanded=False):
@@ -487,7 +570,7 @@ function copySummary() {{
             if not result or not result[0]:
                 return
 
-            transcript, video_title, channel_name = result
+            transcript, video_title, channel_name, video_date = result
 
             progress_bar.progress(60)
 
@@ -500,7 +583,7 @@ function copySummary() {{
                 status_text.text("Answering your question...")
             else:
                 status_text.text("Creating summary...")
-            summary = summarize_text(transcript, video_title, channel_name, current_custom_prompt)
+            summary = summarize_text(transcript, st.session_state.selected_model, video_title, channel_name, video_date, current_custom_prompt)
 
             if not summary:
                 return
