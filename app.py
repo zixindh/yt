@@ -468,11 +468,11 @@ def main():
         summary_data = st.session_state.summary_data
         summary_html = summary_data['html']
         summary_text = summary_data['text']
-        custom_prompt = summary_data.get('question', '')
+        displayed_question = summary_data.get('question', '')
         num_lines = summary_text.count('\n') + 1
 
         # Display results header
-        if custom_prompt and custom_prompt.strip():
+        if displayed_question and displayed_question.strip():
             st.markdown("### Answer to Your Question")
         else:
             st.markdown("### Summary")
@@ -509,9 +509,11 @@ function copySummary() {{
 
     # Process when form is submitted
     if submitted:
+        # Capture form input immediately before any processing
+        current_custom_prompt = custom_prompt or ""
+        
         # Store current values
         st.session_state.current_url = url or ""
-        current_custom_prompt = custom_prompt or ""
 
         # Always clear summary data when form is submitted to prevent stale responses
         st.session_state.summary_data = None
