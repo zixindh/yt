@@ -419,7 +419,7 @@ def main():
                 "Custom Question",
                 placeholder="e.g., What are the customer feedbacks?",
                 label_visibility="collapsed",
-                key="custom_question_input"
+                key=f"custom_question_input_{st.session_state.get('form_counter', 0)}"
             )
 
     # Model selection (outside form to prevent reset)
@@ -513,14 +513,13 @@ function copySummary() {{
         st.session_state.current_url = url or ""
         current_custom_prompt = custom_prompt or ""
 
+        # Always clear summary data when form is submitted to prevent stale responses
+        st.session_state.summary_data = None
+        st.session_state.form_counter = st.session_state.get('form_counter', 0) + 1
+
         # Check if there's a new question or URL change
         has_new_question = current_custom_prompt.strip() and current_custom_prompt != st.session_state.get('last_question', '')
         has_new_url = url and url != st.session_state.get('last_url', '')
-        
-        # Clear summary data for any new question or URL change
-        if has_new_question or has_new_url:
-            st.session_state.summary_data = None
-            st.session_state.form_counter = st.session_state.get('form_counter', 0) + 1
 
         # Use stored URL if no new URL provided
         if not url and st.session_state.current_url:
@@ -546,6 +545,10 @@ function copySummary() {{
             # Update tracking variables immediately to prevent stale responses
             st.session_state.last_question = current_custom_prompt
             st.session_state.last_url = url
+            
+            # Clear any existing summary to ensure fresh response
+            if 'summary_data' in st.session_state:
+                del st.session_state.summary_data
             
             status_text.text("Getting transcript...")
             progress_bar.progress(25)
