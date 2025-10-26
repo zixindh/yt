@@ -31,104 +31,10 @@ st.markdown("""
         color: #495057;
         padding: 1rem;
         border-radius: 6px;
-        margin: 0.5rem 0 0 0;
+        margin: 0.5rem 0;
         line-height: 1.6;
         font-size: 1rem;
         font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-
-    @media (prefers-color-scheme: dark) {
-        .success-message {
-            background-color: #2c2c2e;
-            border: 1px solid #3a3a3c;
-            color: #e0e0e0;
-        }
-
-        .success-message table {
-            border: 1px solid #3a3a3c;
-        }
-
-        .success-message th,
-        .success-message td {
-            border: 1px solid #3a3a3c;
-        }
-
-        .success-message th {
-            background-color: #3a3a3c;
-        }
-
-        .success-message tr:nth-child(even) {
-            background-color: #333335;
-        }
-
-        .success-message code {
-            background-color: #3a3a3c;
-        }
-
-        .success-message pre {
-            background-color: #3a3a3c;
-        }
-
-        .success-message p,
-        .success-message h1,
-        .success-message h2,
-        .success-message h3,
-        .success-message h4,
-        .success-message h5,
-        .success-message h6,
-        .success-message li,
-        .success-message div {
-            color: #e0e0e0 !important;
-        }
-
-        .success-message a {
-            color: #4dabf7 !important;
-        }
-
-        .success-message strong,
-        .success-message b {
-            color: #ffffff !important;
-        }
-
-
-    }
-
-    .success-message table {
-        border-collapse: collapse;
-        width: 100%;
-        margin: 1rem 0;
-        border: 1px solid #e9ecef;
-    }
-
-    .success-message th,
-    .success-message td {
-        border: 1px solid #e9ecef;
-        padding: 0.75rem;
-        text-align: left;
-        vertical-align: top;
-    }
-
-    .success-message th {
-        background-color: #f1f3f5;
-        font-weight: 600;
-    }
-
-    .success-message tr:nth-child(even) {
-        background-color: #f8f9fa;
-    }
-
-    .success-message code {
-        background-color: #e9ecef;
-        padding: 0.2rem 0.4rem;
-        border-radius: 4px;
-        font-family: monospace;
-    }
-
-    .success-message pre {
-        background-color: #e9ecef;
-        padding: 1rem;
-        border-radius: 4px;
-        overflow-x: auto;
     }
 
     .error-message {
@@ -138,46 +44,18 @@ st.markdown("""
         padding: 1rem;
         border-radius: 6px;
         margin: 1rem 0;
-        font-size: 0.95rem;
     }
 
-    /* Clean up Streamlit default styles */
-    .stProgress > div > div > div {
-        background-color: #e9ecef;
-    }
-    .stProgress > div > div > div > div {
-        background-color: #007bff;
-    }
-
-    /* Button styling */
     .stButton > button {
         border-radius: 6px;
         font-weight: 500;
         padding: 0.5rem 1.5rem;
     }
 
-    /* Input styling */
     .stTextInput > div > div > input {
         border-radius: 6px;
     }
 
-    /* Mobile optimizations */
-    @media (max-width: 768px) {
-        .stTextInput > div > div > input {
-            font-size: 16px; /* Prevents zoom on iOS */
-        }
-        .stButton > button {
-            font-size: 1rem;
-            padding: 0.75rem 2rem;
-        }
-    }
-
-    /* Form styling for better mobile keyboard handling */
-    .stForm {
-        margin-bottom: 0.5rem;
-    }
-
-    /* Custom check mark button styling */
     .stForm button[data-testid="stFormSubmitButton"] {
         width: auto !important;
         height: auto !important;
@@ -187,15 +65,13 @@ st.markdown("""
         align-items: center !important;
         justify-content: center !important;
         margin: 0 !important;
-        min-height: 40px !important; /* Match typical input field height */
+        min-height: 40px !important;
     }
 
-    /* Ensure the form columns are properly aligned */
     .stForm .row-widget {
-        align-items: stretch !important; /* Stretch to match heights */
+        align-items: stretch !important;
     }
 
-    /* Better alignment for the columns container */
     .stForm [data-testid="column"] {
         display: flex !important;
         align-items: center !important;
@@ -466,23 +342,38 @@ def get_or_extract_transcript(youtube_url):
     return result
 
 def main():
-    # Initialize session state for persisting summary and chat history
-    if 'summary_data' not in st.session_state:
-        st.session_state.summary_data = None
-    if 'current_url' not in st.session_state:
-        st.session_state.current_url = ""
-    if 'current_question' not in st.session_state:
-        st.session_state.current_question = ""
-    if 'selected_model' not in st.session_state:
-        st.session_state.selected_model = "google/gemini-2.0-flash-exp:free"  # Default to known working model
-    if 'cached_transcript' not in st.session_state:
-        st.session_state.cached_transcript = None
-    if 'cached_video_info' not in st.session_state:
-        st.session_state.cached_video_info = None
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = []
+    # Initialize session state
+    defaults = {
+        'summary_data': None,
+        'current_url': "",
+        'current_question': "",
+        'selected_model': "google/gemini-2.0-flash-exp:free",
+        'cached_transcript': None,
+        'cached_video_info': None,
+        'chat_history': []
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
 
-    # Create a form to handle Enter key and button clicks (at the top)
+    # Model selection (outside form to prevent reset)
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if api_key:
+        models = fetch_openrouter_models(api_key)
+        if models:
+            selected_model = st.selectbox(
+                "AI Model",
+                models,
+                index=models.index(st.session_state.selected_model) if st.session_state.selected_model in models else 0,
+                help="Select an AI model for analysis. Some free models may have data policy restrictions - if one fails, the app will automatically try a known working model."
+            )
+            st.session_state.selected_model = selected_model
+        else:
+            st.warning("No free or low-cost models available from selected vendors. Using default model.")
+    else:
+        st.warning("OpenRouter API key not found. Using default model.")
+
+    # Create a form to handle Enter key and button clicks
     form_key = f"url_form_{st.session_state.get('form_counter', 0)}"
     with st.form(form_key):
         # Create columns for URL input and button in the same row
@@ -499,23 +390,6 @@ def main():
         with col2:
             # Check mark button aligned with URL input
             submitted = st.form_submit_button("✓", type="primary", help="Summarize")
-
-        # Model selection
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        if api_key:
-            models = fetch_openrouter_models(api_key)
-            if models:
-                selected_model = st.selectbox(
-                    "AI Model",
-                    models,
-                    index=models.index(st.session_state.selected_model) if st.session_state.selected_model in models else 0,
-                    help="Select an AI model for analysis. Some free models may have data policy restrictions - if one fails, the app will automatically try a known working model."
-                )
-                st.session_state.selected_model = selected_model
-            else:
-                st.warning("No free or low-cost models available from selected vendors. Using default model.")
-        else:
-            st.warning("OpenRouter API key not found. Using default model.")
 
         # Optional custom question input (inside form for Enter key support)
         with st.expander("Ask a question (Optional)", expanded=False):
@@ -594,19 +468,15 @@ function copySummary() {{
         estimated_height = 800 + num_lines * 30
         components.html(html_content, height=estimated_height, scrolling=False)
 
-    # Process when form is submitted (either by button click or Enter key)
+    # Process when form is submitted
     if submitted:
-        # Store current values in session state
+        # Store current values
         st.session_state.current_url = url or ""
-        st.session_state.current_question = custom_prompt or ""
-
-        # Get the custom prompt from the form input directly
         current_custom_prompt = custom_prompt or ""
 
         # Clear previous summary data when a new question is submitted
-        if current_custom_prompt and current_custom_prompt.strip():
+        if current_custom_prompt.strip():
             st.session_state.summary_data = None
-            # Increment form counter to reset form inputs
             st.session_state.form_counter = st.session_state.get('form_counter', 0) + 1
 
         # Use stored URL if no new URL provided
@@ -623,11 +493,6 @@ function copySummary() {{
         status_text = st.empty()
 
         try:
-            # Step 1: Get or extract transcript (with caching)
-            if not url or ("youtube.com" not in url and "youtu.be" not in url):
-                st.error("⚠️ Please enter a valid YouTube URL")
-                return
-                
             # Check if URL changed - if so, clear cache
             if st.session_state.current_url != url:
                 st.session_state.cached_transcript = None
@@ -639,43 +504,36 @@ function copySummary() {{
             progress_bar.progress(25)
 
             result = get_or_extract_transcript(url)
-
             if not result or not result[0]:
                 return
 
             transcript, video_title, channel_name, video_date = result
-
             progress_bar.progress(60)
 
-            # Display transcript (secondary)
+            # Display transcript
             with st.expander("View full transcript"):
                 st.text_area("Full transcript", transcript, height=200, disabled=True, label_visibility="hidden")
 
-            # Step 2: Generate response
-            if current_custom_prompt and current_custom_prompt.strip():
-                status_text.text("Answering your question...")
-            else:
-                status_text.text("Creating summary...")
+            # Generate response
+            status_text.text("Answering your question..." if current_custom_prompt.strip() else "Creating summary...")
             summary = summarize_text(transcript, st.session_state.selected_model, video_title, channel_name, video_date, current_custom_prompt)
 
             if not summary:
                 return
 
             summary_html = markdown.markdown(summary, extensions=['tables'])
-
             progress_bar.progress(100)
             status_text.text("Complete!")
 
-            # Store summary data in session state
+            # Store summary data
             st.session_state.summary_data = {
                 'html': summary_html,
                 'text': summary,
-                'question': current_custom_prompt if current_custom_prompt and current_custom_prompt.strip() else ''
+                'question': current_custom_prompt if current_custom_prompt.strip() else ''
             }
-            st.session_state.current_url = url
 
             # Add to chat history if there's a question
-            if current_custom_prompt and current_custom_prompt.strip():
+            if current_custom_prompt.strip():
                 st.session_state.chat_history.append({
                     'question': current_custom_prompt,
                     'answer': summary_html,
@@ -683,12 +541,10 @@ function copySummary() {{
                 })
                 st.session_state.chat_count = st.session_state.get('chat_count', 0) + 1
 
-            # Rerun to display the summary at the top
             st.rerun()
 
         except Exception as e:
             st.markdown(f'<div class="error-message">❌ Error: {str(e)}</div>', unsafe_allow_html=True)
-
         finally:
             progress_bar.empty()
             status_text.empty()
