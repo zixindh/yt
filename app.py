@@ -295,7 +295,7 @@ def extract_transcript_apify(youtube_url):
             return None, "YouTube Video", "Unknown Channel", None
 
 
-def summarize_text(text, model="deepseek/deepseek-r1-0528:free", video_title=None, channel_name=None, video_date=None, custom_prompt=None):
+def summarize_text(text, model="google/gemini-2.0-flash-exp:free", video_title=None, channel_name=None, video_date=None, custom_prompt=None):
         """Summarize text using OpenRouter API"""
         try:
             # Get API key from environment
@@ -391,7 +391,7 @@ Create a clear summary that captures the main points and key information."""
                         api_key=api_key,
                     )
                     completion = client.chat.completions.create(
-                        model="deepseek/deepseek-r1-0528:free",
+                        model="google/gemini-2.0-flash-exp:free",
                         messages=[{"role": "user", "content": prompt}]
                     )
                     if completion and completion.choices:
@@ -445,7 +445,7 @@ def main():
     if 'current_question' not in st.session_state:
         st.session_state.current_question = ""
     if 'selected_model' not in st.session_state:
-        st.session_state.selected_model = "deepseek/deepseek-r1-0528:free"  # Default to known working model
+        st.session_state.selected_model = "google/gemini-2.0-flash-exp:free"  # Default to known working model
 
     # Create a form to handle Enter key and button clicks (at the top)
     with st.form("url_form"):
