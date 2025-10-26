@@ -517,8 +517,8 @@ function copySummary() {{
         has_new_question = current_custom_prompt.strip() and current_custom_prompt != st.session_state.get('last_question', '')
         has_new_url = url and url != st.session_state.get('last_url', '')
         
-        # Only clear summary data if there's a new question
-        if has_new_question:
+        # Clear summary data for any new question or URL change
+        if has_new_question or has_new_url:
             st.session_state.summary_data = None
             st.session_state.form_counter = st.session_state.get('form_counter', 0) + 1
 
@@ -543,7 +543,7 @@ function copySummary() {{
                 st.session_state.chat_history = []
                 st.session_state.current_url = url
             
-            # Update tracking variables
+            # Update tracking variables immediately to prevent stale responses
             st.session_state.last_question = current_custom_prompt
             st.session_state.last_url = url
             
