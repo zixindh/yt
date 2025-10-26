@@ -171,8 +171,8 @@ def extract_transcript_apify(youtube_url):
             return None, "YouTube Video", "Unknown Channel", None
 
 
-def summarize_text(text, model="google/gemini-2.0-flash-exp:free", video_title=None, channel_name=None, video_date=None, custom_prompt=None):
-        """Summarize text using OpenRouter API"""
+def summarize_text(text, model="google/gemini-2.0-flash-exp:free", video_title=None, channel_name=None, video_date=None, custom_prompt=None, available_models=None):
+        """Summarize text using OpenRouter API with automatic model switching on rate limits"""
         try:
             # Get API key from environment
             api_key = os.getenv("OPENROUTER_API_KEY")
@@ -238,49 +238,86 @@ Create a clear summary that captures the main points and key information."""
             else:
                 spinner_text = "Generating summary..."
 
-            with st.spinner(spinner_text):
-                completion = client.chat.completions.create(
-                    model=model,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                )
+            # Try models in order if rate limited
+            models_to_try = [model]
+            if available_models and model in available_models:
+                # Add other available models as fallbacks
+                for fallback_model in available_models:
+                    if fallback_model != model and fallback_model not in models_to_try:
+                        models_to_try.append(fallback_model)
 
-                if not completion or not completion.choices:
-                    st.error("❌ The AI model did not return a valid response. This could be due to high demand or an invalid request. Please try again later.")
-                    return None
+            for attempt, current_model in enumerate(models_to_try):
+                try:
+                    with st.spinner(f"{spinner_text} (trying {current_model})" if attempt > 0 else spinner_text):
+                        completion = client.chat.completions.create(
+                            model=current_model,
+                            messages=[
+                                {
+                                    "role": "user",
+                                    "content": prompt
+                                }
+                            ]
+                        )
 
-                summary = completion.choices[0].message.content.strip()
-                return summary if summary else "Summary could not be generated."
+                        if not completion or not completion.choices:
+                            if attempt < len(models_to_try) - 1:
+                                st.warning(f"⚠️ Model {current_model} did not return a valid response. Trying next model...")
+                                continue
+                            else:
+                                st.error("❌ All models failed to return a valid response. Please try again later.")
+                                return None
+
+                        summary = completion.choices[0].message.content.strip()
+                        if summary:
+                            if attempt > 0:
+                                st.success(f"✅ Successfully used {current_model} after {current_model} failed!")
+                            return summary
+                        else:
+                            if attempt < len(models_to_try) - 1:
+                                st.warning(f"⚠️ Model {current_model} returned empty response. Trying next model...")
+                                continue
+                            else:
+                                return "Summary could not be generated."
+
+                except Exception as e:
+                    error_str = str(e)
+                    
+                    # Handle rate limit errors (429)
+                    if "429" in error_str or "rate" in error_str.lower():
+                        if attempt < len(models_to_try) - 1:
+                            st.warning(f"⚠️ Model {current_model} is rate limited. Trying next model...")
+                            continue
+                        else:
+                            st.error("❌ All models are currently rate limited. Please try again later.")
+                            return None
+                    
+                    # Handle 404 errors
+                    elif "404" in error_str and "data policy" in error_str.lower():
+                        if attempt < len(models_to_try) - 1:
+                            st.warning(f"⚠️ Model {current_model} has data policy restrictions. Trying next model...")
+                            continue
+                        else:
+                            st.error("❌ All models have data policy restrictions. Please try again later.")
+                            return None
+                    elif "404" in error_str:
+                        if attempt < len(models_to_try) - 1:
+                            st.warning(f"⚠️ Model {current_model} not found. Trying next model...")
+                            continue
+                        else:
+                            st.error("❌ All models not found or not available.")
+                            return None
+                    else:
+                        if attempt < len(models_to_try) - 1:
+                            st.warning(f"⚠️ Model {current_model} failed: {error_str}. Trying next model...")
+                            continue
+                        else:
+                            st.error(f"❌ All models failed. Last error: {error_str}")
+                            return None
+
+            return None
 
         except Exception as e:
-            error_str = str(e)
-            if "404" in error_str and "data policy" in error_str.lower():
-                st.warning("⚠️ Selected model has data policy restrictions. Automatically switching to a known working model...")
-                # Try with the default working model
-                try:
-                    client = OpenAI(
-                        base_url="https://openrouter.ai/api/v1",
-                        api_key=api_key,
-                    )
-                    completion = client.chat.completions.create(
-                        model="google/gemini-2.0-flash-exp:free",
-                        messages=[{"role": "user", "content": prompt}]
-                    )
-                    if completion and completion.choices:
-                        summary = completion.choices[0].message.content.strip()
-                        st.success("✅ Switched to working model successfully!")
-                        return summary if summary else "Summary could not be generated."
-                except Exception as fallback_e:
-                    st.error(f"❌ Both selected model and fallback model failed. Please try again later or select a different model.")
-                    return None
-            elif "404" in error_str:
-                st.error("❌ Model not found or not available. Please try selecting a different model.")
-            else:
-                st.error(f"❌ Error generating summary: {error_str}")
+            st.error(f"❌ Unexpected error: {str(e)}")
             return None
 
 
@@ -350,7 +387,9 @@ def main():
         'selected_model': "google/gemini-2.0-flash-exp:free",
         'cached_transcript': None,
         'cached_video_info': None,
-        'chat_history': []
+        'chat_history': [],
+        'last_question': "",
+        'last_url': ""
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -474,8 +513,12 @@ function copySummary() {{
         st.session_state.current_url = url or ""
         current_custom_prompt = custom_prompt or ""
 
-        # Clear previous summary data when a new question is submitted
-        if current_custom_prompt.strip():
+        # Check if there's a new question or URL change
+        has_new_question = current_custom_prompt.strip() and current_custom_prompt != st.session_state.get('last_question', '')
+        has_new_url = url and url != st.session_state.get('last_url', '')
+        
+        # Only clear summary data if there's a new question
+        if has_new_question:
             st.session_state.summary_data = None
             st.session_state.form_counter = st.session_state.get('form_counter', 0) + 1
 
@@ -493,12 +536,16 @@ function copySummary() {{
         status_text = st.empty()
 
         try:
-            # Check if URL changed - if so, clear cache
-            if st.session_state.current_url != url:
+            # Check if URL changed - if so, clear cache and chat history
+            if has_new_url:
                 st.session_state.cached_transcript = None
                 st.session_state.cached_video_info = None
                 st.session_state.chat_history = []
                 st.session_state.current_url = url
+            
+            # Update tracking variables
+            st.session_state.last_question = current_custom_prompt
+            st.session_state.last_url = url
             
             status_text.text("Getting transcript...")
             progress_bar.progress(25)
@@ -516,7 +563,13 @@ function copySummary() {{
 
             # Generate response
             status_text.text("Answering your question..." if current_custom_prompt.strip() else "Creating summary...")
-            summary = summarize_text(transcript, st.session_state.selected_model, video_title, channel_name, video_date, current_custom_prompt)
+            
+            # Get available models for fallback
+            available_models = []
+            if api_key:
+                available_models = fetch_openrouter_models(api_key)
+            
+            summary = summarize_text(transcript, st.session_state.selected_model, video_title, channel_name, video_date, current_custom_prompt, available_models)
 
             if not summary:
                 return
