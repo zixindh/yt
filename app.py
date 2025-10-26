@@ -436,8 +436,37 @@ def extract_transcript_and_title(youtube_url):
         st.error(f"❌ Error processing video: {str(e)}")
         return None, "YouTube Video", "Unknown Channel", None
 
+def get_or_extract_transcript(youtube_url):
+    """Get cached transcript if same URL, otherwise extract new one"""
+    # Check if we have cached data for this URL
+    if (st.session_state.cached_transcript and 
+        st.session_state.cached_video_info and 
+        st.session_state.cached_video_info.get('url') == youtube_url):
+        
+        st.info("📋 Using cached transcript from previous analysis")
+        return (st.session_state.cached_transcript, 
+                st.session_state.cached_video_info['title'],
+                st.session_state.cached_video_info['channel'],
+                st.session_state.cached_video_info['date'])
+    
+    # Extract new transcript
+    result = extract_transcript_and_title(youtube_url)
+    if result and result[0]:
+        transcript, title, channel, date = result
+        # Cache the results
+        st.session_state.cached_transcript = transcript
+        st.session_state.cached_video_info = {
+            'url': youtube_url,
+            'title': title,
+            'channel': channel,
+            'date': date
+        }
+        st.info("🔄 New transcript extracted and cached")
+    
+    return result
+
 def main():
-    # Initialize session state for persisting summary
+    # Initialize session state for persisting summary and chat history
     if 'summary_data' not in st.session_state:
         st.session_state.summary_data = None
     if 'current_url' not in st.session_state:
@@ -446,6 +475,12 @@ def main():
         st.session_state.current_question = ""
     if 'selected_model' not in st.session_state:
         st.session_state.selected_model = "google/gemini-2.0-flash-exp:free"  # Default to known working model
+    if 'cached_transcript' not in st.session_state:
+        st.session_state.cached_transcript = None
+    if 'cached_video_info' not in st.session_state:
+        st.session_state.cached_video_info = None
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
 
     # Create a form to handle Enter key and button clicks (at the top)
     with st.form("url_form"):
@@ -492,6 +527,27 @@ def main():
             )
 
 
+
+    # Display current video context if available
+    if st.session_state.cached_video_info:
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            video_info = st.session_state.cached_video_info
+            st.markdown(f"**📺 Current Video:** {video_info['title']} | **📺 Channel:** {video_info['channel']}")
+        with col2:
+            if st.button("🗑️ Clear Chat", help="Clear chat history and start fresh"):
+                st.session_state.chat_history = []
+                st.session_state.summary_data = None
+                st.rerun()
+    
+    # Display chat history if available
+    if st.session_state.chat_history:
+        st.markdown("### 💬 Chat History")
+        for i, chat in enumerate(st.session_state.chat_history):
+            with st.expander(f"Q{i+1}: {chat['question'][:50]}{'...' if len(chat['question']) > 50 else ''}", expanded=False):
+                st.markdown(f"**Question:** {chat['question']}")
+                st.markdown(f"**Answer:**")
+                st.markdown(chat['answer'], unsafe_allow_html=True)
 
     # Display summary below the form if available
     if st.session_state.summary_data:
@@ -561,11 +617,22 @@ function copySummary() {{
         status_text = st.empty()
 
         try:
-            # Step 1: Download subtitles and extract transcript
-            status_text.text("Extracting transcript...")
+            # Step 1: Get or extract transcript (with caching)
+            if not url or ("youtube.com" not in url and "youtu.be" not in url):
+                st.error("⚠️ Please enter a valid YouTube URL")
+                return
+                
+            # Check if URL changed - if so, clear cache
+            if st.session_state.current_url != url:
+                st.session_state.cached_transcript = None
+                st.session_state.cached_video_info = None
+                st.session_state.chat_history = []
+                st.session_state.current_url = url
+            
+            status_text.text("Getting transcript...")
             progress_bar.progress(25)
 
-            result = extract_transcript_and_title(url)
+            result = get_or_extract_transcript(url)
 
             if not result or not result[0]:
                 return
@@ -600,6 +667,15 @@ function copySummary() {{
                 'question': current_custom_prompt if current_custom_prompt and current_custom_prompt.strip() else ''
             }
             st.session_state.current_url = url
+
+            # Add to chat history if there's a question
+            if current_custom_prompt and current_custom_prompt.strip():
+                st.session_state.chat_history.append({
+                    'question': current_custom_prompt,
+                    'answer': summary_html,
+                    'timestamp': st.session_state.get('chat_count', 0) + 1
+                })
+                st.session_state.chat_count = st.session_state.get('chat_count', 0) + 1
 
             # Rerun to display the summary at the top
             st.rerun()
