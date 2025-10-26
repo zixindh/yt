@@ -356,23 +356,6 @@ def main():
         if key not in st.session_state:
             st.session_state[key] = value
 
-    # Model selection (outside form to prevent reset)
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    if api_key:
-        models = fetch_openrouter_models(api_key)
-        if models:
-            selected_model = st.selectbox(
-                "AI Model",
-                models,
-                index=models.index(st.session_state.selected_model) if st.session_state.selected_model in models else 0,
-                help="Select an AI model for analysis. Some free models may have data policy restrictions - if one fails, the app will automatically try a known working model."
-            )
-            st.session_state.selected_model = selected_model
-        else:
-            st.warning("No free or low-cost models available from selected vendors. Using default model.")
-    else:
-        st.warning("OpenRouter API key not found. Using default model.")
-
     # Create a form to handle Enter key and button clicks
     form_key = f"url_form_{st.session_state.get('form_counter', 0)}"
     with st.form(form_key):
@@ -399,6 +382,23 @@ def main():
                 label_visibility="collapsed",
                 key="custom_question_input"
             )
+
+    # Model selection (outside form to prevent reset)
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if api_key:
+        models = fetch_openrouter_models(api_key)
+        if models:
+            selected_model = st.selectbox(
+                "AI Model",
+                models,
+                index=models.index(st.session_state.selected_model) if st.session_state.selected_model in models else 0,
+                help="Select an AI model for analysis. Some free models may have data policy restrictions - if one fails, the app will automatically try a known working model."
+            )
+            st.session_state.selected_model = selected_model
+        else:
+            st.warning("No free or low-cost models available from selected vendors. Using default model.")
+    else:
+        st.warning("OpenRouter API key not found. Using default model.")
 
 
 
