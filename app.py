@@ -483,7 +483,8 @@ def main():
         st.session_state.chat_history = []
 
     # Create a form to handle Enter key and button clicks (at the top)
-    with st.form("url_form"):
+    form_key = f"url_form_{st.session_state.get('form_counter', 0)}"
+    with st.form(form_key):
         # Create columns for URL input and button in the same row
         col1, col2 = st.columns([6, 1])
 
@@ -522,8 +523,7 @@ def main():
                 "Custom Question",
                 placeholder="e.g., What are the customer feedbacks?",
                 label_visibility="collapsed",
-                key="custom_question_input",
-                value=st.session_state.current_question
+                key="custom_question_input"
             )
 
 
@@ -600,8 +600,14 @@ function copySummary() {{
         st.session_state.current_url = url or ""
         st.session_state.current_question = custom_prompt or ""
 
-        # Get the custom prompt from session state (since it's not available outside form scope)
-        current_custom_prompt = st.session_state.current_question
+        # Get the custom prompt from the form input directly
+        current_custom_prompt = custom_prompt or ""
+
+        # Clear previous summary data when a new question is submitted
+        if current_custom_prompt and current_custom_prompt.strip():
+            st.session_state.summary_data = None
+            # Increment form counter to reset form inputs
+            st.session_state.form_counter = st.session_state.get('form_counter', 0) + 1
 
         # Use stored URL if no new URL provided
         if not url and st.session_state.current_url:
