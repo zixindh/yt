@@ -28,13 +28,38 @@ st.markdown("""
     .success-message {
         background-color: #f8f9fa;
         border: 1px solid #e9ecef;
-        color: #495057;
+        color: #111111;
         padding: 1rem;
         border-radius: 6px;
         margin: 0.5rem 0;
         line-height: 1.6;
         font-size: 1rem;
         font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .success-message a {
+        color: #0d6efd;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .success-message {
+            background-color: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.18);
+            color: #f8f9fa;
+        }
+
+        .success-message p,
+        .success-message li,
+        .success-message span,
+        .success-message strong,
+        .success-message em,
+        .success-message {
+            color: #f8f9fa !important;
+        }
+
+        .success-message a {
+            color: #8ecaff !important;
+        }
     }
 
     .error-message {
@@ -610,9 +635,10 @@ function copySummary() {{
 
     components.html(
         """
-<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfipFa97LdsBF9s2ohwS7O3J0-Yi-YUJtuct-9g59B2snuMBA/viewform?embedded=true" width="640" height="374" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+<div id="wjxFloatContainer"></div>
+<script type="text/javascript" src="https://www.wjx.cn/js/ap.js?activity=OJViVnu" id="wjxFloatBtnJsCode"></script>
         """,
-        height=400,
+        height=80,
         scrolling=False,
     )
 
