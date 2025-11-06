@@ -608,7 +608,6 @@ function copySummary() {{
             status_text.empty()
 
 
-    st.markdown("### Share Your Feedback")
     components.html(
         """
 <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfipFa97LdsBF9s2ohwS7O3J0-Yi-YUJtuct-9g59B2snuMBA/viewform?embedded=true" width="640" height="374" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
