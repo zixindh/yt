@@ -686,14 +686,5 @@ function copySummary() {{
             status_text.empty()
 
 
-    components.html(
-        """
-<script type='text/javascript' src='https://v.wjx.cn/handler/jqemed.ashx?activity=OJViVnu&width=750&source=iframe&sm=t'></script>
-        """,
-        height=700,
-        scrolling=False,
-    )
-
-
 if __name__ == "__main__":
     main()
