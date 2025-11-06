@@ -611,9 +611,9 @@ function copySummary() {{
     st.markdown("### Share Your Feedback")
     components.html(
         """
-<iframe id='idy_frame' height="100%" width="100%" src="https://wj.qq.com/s2/24721803/2c9f/" frameborder="0" style='min-height:650px' allowfullscreen sandbox="allow-same-origin allow-scripts allow-modals allow-downloads allow-forms allow-popups"></iframe>
+<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfipFa97LdsBF9s2ohwS7O3J0-Yi-YUJtuct-9g59B2snuMBA/viewform?embedded=true" width="640" height="374" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
         """,
-        height=650,
+        height=400,
         scrolling=False,
     )
 
