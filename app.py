@@ -62,14 +62,33 @@ st.markdown("""
         margin: 1rem 0;
     }
 
-    .stButton > button {
-        border-radius: 6px;
-        font-weight: 500;
-        padding: 0.5rem 1.5rem;
-    }
-
     .stTextInput > div > div > input {
         border-radius: 6px;
+        background-color: #ffffff !important;
+        color: #111111 !important;
+        border: 1px solid #ced4da !important;
+    }
+
+    .stTextInput > div > div > input::placeholder {
+        color: #6c757d !important;
+    }
+
+    textarea, textarea:disabled {
+        background-color: #ffffff !important;
+        color: #111111 !important;
+        border: 1px solid #ced4da !important;
+    }
+
+    div[data-testid="stSelectbox"] div[role="combobox"] {
+        background-color: #ffffff !important;
+        color: #111111 !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 6px !important;
+    }
+
+    div[data-baseweb="popover"] {
+        background-color: #ffffff !important;
+        color: #111111 !important;
     }
 
     .stForm button[data-testid="stFormSubmitButton"] {
@@ -91,6 +110,49 @@ st.markdown("""
     .stForm [data-testid="column"] {
         display: flex !important;
         align-items: center !important;
+    }
+
+    .stButton > button {
+        border-radius: 6px;
+        font-weight: 500;
+        padding: 0.5rem 1.5rem;
+        background-color: #f8f9fa !important;
+        color: #111111 !important;
+        border: 1px solid #ced4da !important;
+    }
+
+    .stButton > button:hover {
+        background-color: #e9ecef !important;
+    }
+
+    .stForm button[data-testid="stFormSubmitButton"] {
+        background-color: #0d6efd !important;
+        color: #ffffff !important;
+        border: 1px solid #0a58ca !important;
+    }
+
+    .stForm button[data-testid="stFormSubmitButton"]:hover {
+        background-color: #0b5ed7 !important;
+    }
+
+    [data-testid="stHeader"], [data-testid="stToolbar"] {
+        background-color: #ffffff !important;
+        color: #111111 !important;
+        border-bottom: 1px solid #e9ecef !important;
+    }
+
+    [data-testid="stHeader"] svg, [data-testid="stToolbar"] svg {
+        color: #111111 !important;
+        fill: #111111 !important;
+    }
+
+    [data-testid="stToolbar"] button {
+        background-color: transparent !important;
+        color: #111111 !important;
+    }
+
+    [data-testid="stToolbar"] button:hover {
+        background-color: #f1f3f5 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -626,10 +688,9 @@ function copySummary() {{
 
     components.html(
         """
-<div id="wjxFloatContainer"></div>
-<script type="text/javascript" src="https://www.wjx.cn/js/ap.js?activity=OJViVnu" id="wjxFloatBtnJsCode"></script>
+<script type='text/javascript' src='https://v.wjx.cn/handler/jqemed.ashx?activity=OJViVnu&width=750&source=iframe&sm=t'></script>
         """,
-        height=80,
+        height=700,
         scrolling=False,
     )
 
