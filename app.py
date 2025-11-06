@@ -608,5 +608,15 @@ function copySummary() {{
             status_text.empty()
 
 
+    st.markdown("### Share Your Feedback")
+    components.html(
+        """
+<iframe id='idy_frame' height="100%" width="100%" src="https://wj.qq.com/s2/24721803/2c9f/" frameborder="0" style='min-height:650px' allowfullscreen sandbox="allow-same-origin allow-scripts allow-modals allow-downloads allow-forms allow-popups"></iframe>
+        """,
+        height=650,
+        scrolling=False,
+    )
+
+
 if __name__ == "__main__":
     main()
