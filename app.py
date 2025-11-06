@@ -25,6 +25,18 @@ st.set_page_config(
 # Custom CSS for minimalistic design
 st.markdown("""
 <style>
+    :root {
+        color-scheme: light !important;
+    }
+
+    html,
+    body,
+    [data-testid="stApp"],
+    [data-testid="stAppViewContainer"] {
+        background-color: #ffffff !important;
+        color: #111111 !important;
+    }
+
     .success-message {
         background-color: #f8f9fa;
         border: 1px solid #e9ecef;
@@ -39,27 +51,6 @@ st.markdown("""
 
     .success-message a {
         color: #0d6efd;
-    }
-
-    @media (prefers-color-scheme: dark) {
-        .success-message {
-            background-color: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.18);
-            color: #f8f9fa;
-        }
-
-        .success-message p,
-        .success-message li,
-        .success-message span,
-        .success-message strong,
-        .success-message em,
-        .success-message {
-            color: #f8f9fa !important;
-        }
-
-        .success-message a {
-            color: #8ecaff !important;
-        }
     }
 
     .error-message {
