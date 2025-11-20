@@ -7,6 +7,7 @@ from apify_client import ApifyClient
 from openai import OpenAI
 import streamlit.components.v1 as components
 import markdown
+import html
 
 # Load environment variables from .env file if it exists
 try:
@@ -156,6 +157,93 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+
+def render_copyable_block(content_html: str, block_id: str, height: int = 400, scrolling: bool = False) -> None:
+    """Render a styled block with a copy button."""
+    html_content = f"""
+<div style="position: relative;">
+    <div class="success-message" id="{block_id}" style="padding-right: 40px;">
+        {content_html}
+    </div>
+    <button style="position: absolute; top: 5px; right: 10px; background: none; border: none; cursor: pointer; opacity: 0.7;" onclick="copyBlock('{block_id}')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1z"/>
+        </svg>
+    </button>
+</div>
+<script>
+function copyBlock(blockId) {{
+    var element = document.getElementById(blockId);
+    if (!element) return;
+    var text = element.innerText || element.textContent || '';
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+}}
+</script>
+    """
+    components.html(html_content, height=height, scrolling=scrolling)
+
+
+def format_transcript_html(transcript_text: str) -> str:
+    """Safely format transcript text for HTML rendering."""
+    safe_text = html.escape(transcript_text or "")
+    return f"<pre style='white-space: pre-wrap; margin: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif;'>{safe_text}</pre>"
+
+
+def update_transcript_history(url: str, transcript: str, title: str, channel: str, date: str) -> None:
+    """Keep a single transcript entry per YouTube URL."""
+    if not transcript:
+        return
+
+    history = st.session_state.get('transcript_history', [])
+    entry = {
+        "url": url,
+        "transcript": transcript,
+        "title": title or "YouTube Video",
+        "channel": channel or "Unknown Channel",
+        "date": date
+    }
+
+    for idx, item in enumerate(history):
+        if item["url"] == url:
+            history[idx] = entry
+            break
+    else:
+        history.append(entry)
+
+    st.session_state.transcript_history = history
+
+
+def display_transcript_history_section() -> None:
+    """Render collapsible transcript blocks with copy buttons."""
+    history = st.session_state.get('transcript_history', [])
+    if not history:
+        return
+
+    st.markdown("### Full Transcripts")
+    for idx, entry in enumerate(reversed(history)):
+        title = entry.get("title") or "YouTube Video"
+        channel = entry.get("channel") or "Unknown Channel"
+        date = entry.get("date")
+        subtitle = f"{title} — {channel}"
+        if date:
+            subtitle += f" ({date})"
+
+        with st.expander(subtitle, expanded=False):
+            st.markdown(f"[Open on YouTube]({entry.get('url')})")
+            transcript_text = entry.get("transcript", "")
+            lines = transcript_text.count('\n') + 1 if transcript_text else 1
+            base_height = min(600, 120 + lines * 18)
+            scrolling = lines > 35
+            transcript_html = format_transcript_html(transcript_text)
+            render_copyable_block(transcript_html, f"transcript-{idx}", height=base_height, scrolling=scrolling)
 
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def fetch_openrouter_models(api_key: str) -> List[str]:
@@ -467,7 +555,8 @@ def main():
         'cached_video_info': None,
         'chat_history': [],
         'last_question': "",
-        'last_url': ""
+        'last_url': "",
+        'transcript_history': []
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -555,35 +644,12 @@ def main():
         else:
             st.markdown("### Summary")
 
-        # Summary output with copy button
-        html_content = f"""
-<div style="position: relative;">
-<div class="success-message" id="summary-text" style="padding-right: 40px;">
-{summary_html}
-</div>
-<button style="position: absolute; top: 5px; right: 10px; background: none; border: none; cursor: pointer; opacity: 0.7;" onclick="copySummary()">
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-<path fill-rule="evenodd" d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1z"/>
-</svg>
-</button>
-</div>
-<script>
-function copySummary() {{
-    var element = document.getElementById('summary-text');
-    var text = element.innerText || element.textContent || '';
-    var textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
-}}
-</script>
-        """
+        # Summary output with copy button (shared styling)
         estimated_height = 800 + num_lines * 30
-        components.html(html_content, height=estimated_height, scrolling=False)
+        render_copyable_block(summary_html, "summary-text", height=estimated_height, scrolling=False)
+
+    # Show transcript history under results
+    display_transcript_history_section()
 
     # Process when form is submitted
     if submitted:
@@ -640,9 +706,8 @@ function copySummary() {{
             transcript, video_title, channel_name, video_date = result
             progress_bar.progress(60)
 
-            # Display transcript
-            with st.expander("View full transcript"):
-                st.text_area("Full transcript", transcript, height=200, disabled=True, label_visibility="hidden")
+            # Persist transcript for later viewing
+            update_transcript_history(url, transcript, video_title, channel_name, video_date)
 
             # Generate response
             status_text.text("Answering your question..." if current_custom_prompt.strip() else "Creating summary...")
