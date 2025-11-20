@@ -161,9 +161,20 @@ st.markdown("""
 
 def render_copyable_block(content_html: str, block_id: str, height: int = 400, scrolling: bool = False) -> None:
     """Render a styled block with a copy button."""
+    container_styles = ["padding-right: 40px;"]
+    if scrolling:
+        max_height = max(height - 40, 200)
+        container_styles.extend([
+            f"max-height: {max_height}px;",
+            "overflow-y: auto;",
+            "overflow-x: hidden;",
+            "scrollbar-width: thin;"
+        ])
+    container_style_attr = " ".join(container_styles)
+
     html_content = f"""
 <div style="position: relative;">
-    <div class="success-message" id="{block_id}" style="padding-right: 40px;">
+    <div class="success-message" id="{block_id}" style="{container_style_attr}">
         {content_html}
     </div>
     <button style="position: absolute; top: 5px; right: 10px; background: none; border: none; cursor: pointer; opacity: 0.7;" onclick="copyBlock('{block_id}')">
